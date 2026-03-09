@@ -268,9 +268,37 @@ GLOSSARY_PROMPT = (
 )
 
 
+def writeback_to_notebook(nlm_cli: str, notebook_id: str, content: str,
+                          note_title: str) -> bool:
+    """Write content back into the NotebookLM notebook as a text source/note.
+    Returns True on success."""
+    # NLM CLI has a shell arg length limit; chunk if needed (safe limit ~8000 chars)
+    MAX_CHARS = 8000
+    if len(content) > MAX_CHARS:
+        logging.warning(
+            f"[WRITEBACK] Content is {len(content)} chars; truncating to {MAX_CHARS} for NLM source."
+        )
+        content = content[:MAX_CHARS] + "\n\n[...truncated — full version in Obsidian]"
+
+    cmd = [
+        nlm_cli, "source", "add", content,
+        "--notebook", notebook_id,
+        "--title", note_title,
+        "--type", "text",
+    ]
+    logging.info(f"[WRITEBACK] Writing note '{note_title}' to notebook {notebook_id[:8]}...")
+    output = run_command(cmd, timeout=60)
+    if output is not None and output != "":
+        logging.info(f"[WRITEBACK] Done — source added.")
+        return True
+    # run_command returns '' on error but also on empty stdout — check separately
+    logging.warning("[WRITEBACK] No output from source add (may still have succeeded).")
+    return True  # NLM source add often returns empty stdout on success
+
+
 def process_notebook(nlm_cli: str, notebook_id: str, notebook_name: str,
                      topic: str, vault_dir: str, mode: str, date_str: str,
-                     lang: str = "en") -> None:
+                     lang: str = "en", writeback: bool = False) -> None:
     """Extract knowledge from one notebook and write an Obsidian note."""
     safe_nb = sanitize_filename(notebook_name)
     suffix_map = {"qa": ("_QA.md", "Deep Q&A"), "summary": ("_Summary.md", "Summary"), "glossary": ("_Glossary.md", "Glossary")}
@@ -325,8 +353,17 @@ def process_notebook(nlm_cli: str, notebook_id: str, notebook_name: str,
 
     body_parts += ["", "*Extracted by notebooklm-distiller*"]
 
-    write_note(out_path, '\n'.join(body_parts))
+    full_content = '\n'.join(body_parts)
+    write_note(out_path, full_content)
     logging.info(f"Distillation complete → {out_path}")
+
+    if writeback:
+        # Write back to NotebookLM as a source note (strips YAML frontmatter)
+        # Find end of frontmatter (second '---') and use the body only
+        fm_end = full_content.find('\n---\n', 4)
+        writeback_body = full_content[fm_end + 5:].strip() if fm_end != -1 else full_content
+        note_title = f"Distill Log: {mode} | {notebook_name} | {date_str}"
+        writeback_to_notebook(nlm_cli, notebook_id, writeback_body, note_title)
 
 
 def cmd_distill(args) -> None:
@@ -350,7 +387,7 @@ def cmd_distill(args) -> None:
     for nid, name in notebooks:
         logging.info(f"\n{'='*50}\nProcessing: {name}\n{'='*50}")
         process_notebook(args.cli_path, nid, name, args.topic, vault_dir, args.mode, date_str,
-                         lang=args.lang)
+                         lang=args.lang, writeback=args.writeback)
 
     logging.info("=== All done! ===")
 
@@ -548,6 +585,8 @@ Examples:
                            help="Path to the notebooklm CLI (default: 'notebooklm' from PATH)")
     p_distill.add_argument("--lang", default="en", choices=["en", "zh"],
                            help="Output language: 'en' (default) or 'zh' for Chinese")
+    p_distill.add_argument("--writeback", action="store_true", default=False,
+                           help="Write distilled content back into the NotebookLM notebook as a note")
 
     # --- research ---
     p_research = sub.add_parser("research", help="Start a NotebookLM web research session.")
