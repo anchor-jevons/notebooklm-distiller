@@ -259,6 +259,23 @@ YourVault/
 
 ---
 
+## 输出语言
+
+默认输出为英文。使用 `--lang zh` 可切换为中文输出，适用于 `distill`、`quiz`、`evaluate` 三个子命令：
+
+```bash
+python3 distill.py distill --keywords "MiroFish" --topic "AI" \
+  --vault-dir ~/Obsidian/Vault --mode summary --lang zh
+```
+
+## 关于 NotebookLM 对话历史的说明
+
+脚本内部使用 `notebooklm ask --new` 命令，该命令创建的是**临时 CLI 会话**，不会出现在 NotebookLM 网页端的对话历史中。这是预期行为 —— CLI 与 Web UI 使用独立的会话空间。
+
+**含义：** distill、quiz、evaluate 的查询不会显示在笔记本的历史记录里，但回答仍然来自你指定笔记本的原始资料，CLI 会将查询限定在 `--notebook` 所指定的笔记本 ID 范围内，不会使用笔记本以外的知识。
+
+**如何验证来源：** 蒸馏完成后，可将输出中的关键短语粘贴到 NotebookLM 网页端搜索，确认它来自原始资料。
+
 ## 常见问题
 
 | 错误 | 解决方案 |

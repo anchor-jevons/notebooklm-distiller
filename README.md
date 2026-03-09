@@ -259,6 +259,23 @@ YourVault/
 
 ---
 
+## Notes on output language
+
+By default, `distill`, `quiz`, and `evaluate` reply in English. Add `--lang zh` to get Chinese output:
+
+```bash
+python3 distill.py distill --keywords "MiroFish" --topic "AI" \
+  --vault-dir ~/Obsidian/Vault --mode summary --lang zh
+```
+
+## Notes on NLM conversation history
+
+The `notebooklm ask --new` command used internally creates **ephemeral CLI sessions** that are not visible in the NotebookLM web interface. This is expected behaviour — the CLI and web UI maintain separate conversation spaces.
+
+**What this means:** You will not see distill, quiz, or evaluate queries appear in your NotebookLM notebook history. The answers are still generated from your notebook's sources, but the conversation is not persisted.
+
+**To verify source authenticity:** After distilling, search a key phrase from the output in your original NotebookLM sources. The CLI always scopes queries to the specified `--notebook` ID and does not use outside knowledge.
+
 ## Troubleshooting
 
 | Error | Fix |

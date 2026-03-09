@@ -47,11 +47,13 @@ Trigger `quiz` + `evaluate` subcommands when:
 - User says "quiz me on X", "考考我", "出题测试我", "测验"
 - User wants an interactive Q&A session in Discord on a NotebookLM topic
 - **Orchestration flow (Discord)**:
-  1. Call `quiz --keywords X` → get JSON with `notebook_id` + `questions[]`
-  2. Send Q1 to Discord, wait for user reply
-  3. Call `evaluate --notebook-id X --question Q1 --answer <reply>` → get JSON feedback
-  4. Post feedback to Discord, proceed to Q2
-  5. Repeat until all questions done or user says stop
+  1. Call `quiz --keywords X` → get JSON with `notebook_id` + `notebook_name` + `questions[]`
+  2. **MUST** announce source before Q1: `来，N 道题（来源：{notebook_name} · ID: {notebook_id[:8]}）`
+  3. Send Q1 to Discord, wait for user reply
+  4. Call `evaluate --notebook-id X --question Q1 --answer <reply>` → get JSON feedback
+  5. Post feedback to Discord, proceed to Q2
+  6. Repeat until all questions done or user says stop
+- **CRITICAL**: Always show notebook source so user can verify questions came from NLM, not agent knowledge
 
 Trigger `persist` subcommand when:
 - User says "存到 Obsidian", "把这段内容写入知识库", "persist this to vault"
@@ -160,6 +162,14 @@ status: draft
 
 ---
 ```
+
+## Output language
+
+Add `--lang zh` to `distill`, `quiz`, or `evaluate` to get Chinese output. Default is English.
+
+## NLM CLI session behaviour
+
+`notebooklm ask --new` creates ephemeral sessions that are **not visible in the NotebookLM web UI**. This is by design — the CLI and web interface use separate conversation spaces. Answers are still scoped to the specified notebook's sources.
 
 ## Error handling
 
