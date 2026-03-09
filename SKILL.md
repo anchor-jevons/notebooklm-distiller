@@ -92,6 +92,8 @@ python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py distill \
   --topic "<TopicFolderName>" \
   --vault-dir "<path/to/obsidian/vault>" \
   --mode <qa|summary|glossary> \
+  [--lang zh]        # Add for Chinese output (default: en)
+  [--writeback]      # Write distilled content back into NLM notebook as a note
   [--cli-path <path/to/notebooklm>]
 ```
 
@@ -99,6 +101,10 @@ python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py distill \
 - `qa` (default) — generates 15-20 questions + answers → `<NotebookName>_QA.md`
 - `summary` — 5 structured sections (Summary, Key Points, Constraints, Trade-offs, Open Questions) → `<NotebookName>_Summary.md`
 - `glossary` — 15-30 domain terms + definitions → `<NotebookName>_Glossary.md`
+
+**Flags:**
+- `--lang zh` — prepends `请用中文回答` to all NLM prompts; add when user requests Chinese output or context is Chinese
+- `--writeback` — after writing to Obsidian, calls `notebooklm source add` to push the distilled note back into the source notebook as a text source titled `Distill Log: {mode} | {notebook_name} | {date}`. Add when user says "写回 NLM", "记录到笔记本", or wants the distill log visible in NotebookLM
 
 ## Subcommand: research
 
