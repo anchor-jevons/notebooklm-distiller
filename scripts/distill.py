@@ -123,10 +123,13 @@ def get_notebooks(nlm_cli: str, keywords: List[str]) -> List[Tuple[str, str]]:
 
 
 def extract_questions(nlm_cli: str, notebook_id: str) -> List[str]:
-    """Ask NotebookLM to generate 15-20 deep questions from a notebook."""
+    """Ask NotebookLM to generate 15-20 questions that expose deep understanding vs memorisation."""
     prompt = (
-        "Please generate 15 to 20 of the most valuable questions based on all sources in this notebook. "
-        "Focus on core ideas, design constraints, pain points, and solutions. "
+        "Generate 15 to 20 questions that would expose whether someone deeply understands this subject "
+        "versus someone who has only memorised facts. "
+        "Good questions should require the reader to reason, connect concepts, or explain WHY — "
+        "not just recall a definition or fact. "
+        "Include questions about edge cases, apparent contradictions, and non-obvious consequences. "
         "Output one question per line as a flat list. No numbering, no prefixes, no markdown formatting."
     )
     output = run_command([nlm_cli, "ask", prompt, "--notebook", notebook_id, "--new"])
@@ -164,21 +167,37 @@ def ask_question(nlm_cli: str, question: str, notebook_id: str, retries: int = 3
 # ---------------------------------------------------------------------------
 
 SUMMARY_PROMPTS = [
-    ("Summary",
-     "Please summarise the core theme and background of this material in 2-3 sentences."),
-    ("Key Points",
-     "List the core knowledge points, development thread, and key conclusions in structured Markdown."),
-    ("Design Constraints",
-     "Identify all core constraints, pain points, and limitations present in the material."),
+    ("Core Mental Models",
+     "What are the 3-5 core mental models or thinking frameworks that every expert in this field shares? "
+     "These are not facts to memorise — they are the lenses through which experts interpret new information. "
+     "For each model, explain what it is and why it matters for understanding everything else in this field."),
+    ("Consensus Map",
+     "What do all major sources in this notebook agree on? "
+     "What is the established consensus — the things that are no longer seriously debated among practitioners? "
+     "Present this as a clear, structured list."),
+    ("Debate Map",
+     "Where do experts in this field fundamentally disagree? "
+     "Identify the 3 most important unresolved debates. "
+     "For each debate: state the question, summarise each side's strongest argument, "
+     "and note what evidence or assumptions drive the disagreement. "
+     "Use a structured format (e.g. bold headings per debate)."),
     ("Trade-offs",
-     "Analyse architectural / implementation trade-offs. Use a Markdown table or list."),
-    ("Open Questions",
-     "What unresolved questions and risk factors deserve the most attention going forward?"),
+     "What are the key trade-offs, tensions, or design dilemmas present in this material? "
+     "For each trade-off, explain what you gain and what you sacrifice on each side. "
+     "Use a Markdown table or structured list."),
+    ("Open Frontier",
+     "What are the genuinely unsolved problems that even experts are still working on? "
+     "What questions does this field not yet have good answers to? "
+     "What would need to be true for the field to move forward on these?"),
 ]
 
 GLOSSARY_PROMPT = (
-    "Scan all sources in this notebook and list the 15-30 most important domain terms, "
-    "abbreviations, and key entities. For each, give a precise definition based on the source material. "
+    "Scan all sources in this notebook and produce a glossary of the 15-30 most important domain terms, "
+    "abbreviations, and key concepts. "
+    "For each entry provide: "
+    "(1) a precise definition grounded in the source material, "
+    "(2) how an expert uses this term versus how a beginner typically misuses or misunderstands it, "
+    "(3) any closely related terms that are easy to confuse with this one, and why the distinction matters. "
     "Use bold subheadings or Markdown dividers to separate entries."
 )
 
