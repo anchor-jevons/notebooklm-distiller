@@ -65,6 +65,8 @@ python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py distill \
 | `--topic` | ✅ | Subfolder name inside `--vault-dir` for the output file |
 | `--vault-dir` | ✅ | Path to your Obsidian vault (or any output directory) |
 | `--mode` | | `qa` (default), `summary`, or `glossary` |
+| `--lang` | | Output language: `en` (default) or `zh` (Chinese) |
+| `--writeback` | | Also write distilled content back into the NotebookLM notebook as a source note |
 | `--cli-path` | | Path to `notebooklm` binary if not in `$PATH` |
 
 **Output format:**
@@ -264,7 +266,7 @@ YourVault/
 By default, `distill`, `quiz`, and `evaluate` reply in English. Add `--lang zh` to get Chinese output:
 
 ```bash
-python3 distill.py distill --keywords "MiroFish" --topic "AI" \
+python3 distill.py distill --keywords "Machine Learning" --topic "AI" \
   --vault-dir ~/Obsidian/Vault --mode summary --lang zh
 ```
 

@@ -12,7 +12,7 @@
 notebooklm list
 
 # 记录一个有内容的 notebook 名称和 ID，用于后续测试
-# 例：KB: MiroFish  →  ID: xxxxxxxx
+# 例：KB: MyResearch  →  ID: xxxxxxxx
 ```
 
 ---
@@ -202,7 +202,7 @@ python3 scripts/distill.py distill \
 
 ```bash
 # 扫描所有文件，确认无个人信息
-grep -rn "jevons\|ASVP\|MiroFish\|ChipDesign\|/Users/jevons\|anchor-jevons" \
+grep -rn "/Users/[a-z]\+\|your-name\|your-email\|my-notebook" \
   scripts/ SKILL.md README.md README_zh.md requirements.txt
 ```
 

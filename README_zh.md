@@ -65,6 +65,8 @@ python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py distill \
 | `--topic` | ✅ | 输出文件在 `--vault-dir` 下的子目录名 |
 | `--vault-dir` | ✅ | Obsidian vault 路径（或任意输出目录） |
 | `--mode` | | `qa`（默认）、`summary` 或 `glossary` |
+| `--lang` | | 输出语言：`en`（默认）或 `zh`（中文） |
+| `--writeback` | | 同时将蒸馏结果写回 NotebookLM 笔记本作为来源笔记 |
 | `--cli-path` | | `notebooklm` 可执行文件路径（不在 $PATH 时使用） |
 
 **输出格式示例：**
@@ -264,7 +266,7 @@ YourVault/
 默认输出为英文。使用 `--lang zh` 可切换为中文输出，适用于 `distill`、`quiz`、`evaluate` 三个子命令：
 
 ```bash
-python3 distill.py distill --keywords "MiroFish" --topic "AI" \
+python3 distill.py distill --keywords "Machine Learning" --topic "AI" \
   --vault-dir ~/Obsidian/Vault --mode summary --lang zh
 ```
 
