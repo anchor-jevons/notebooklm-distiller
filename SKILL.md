@@ -25,8 +25,10 @@ permissions:
 
 Automated knowledge extraction pipeline: search NotebookLM notebooks by keyword → generate deep questions or structured summaries → write linked Obsidian markdown notes.
 
-**Three subcommands:**
+**Five subcommands:**
 - `distill` — extract knowledge from existing notebooks (qa / summary / glossary)
+- `quiz` — generate quiz questions as JSON for Discord-based interactive sessions
+- `evaluate` — evaluate a user's answer against notebook sources (JSON output)
 - `research` — start a web research session inside NotebookLM on any topic
 - `persist` — write any markdown content directly into the Obsidian vault
 
@@ -40,6 +42,16 @@ Trigger `distill` subcommand when:
 Trigger `research` subcommand when:
 - User says "研究一下 <topic>", "做网络调研", "research this topic in NotebookLM"
 - User wants NotebookLM to gather web sources on a topic without providing URLs
+
+Trigger `quiz` + `evaluate` subcommands when:
+- User says "quiz me on X", "考考我", "出题测试我", "测验"
+- User wants an interactive Q&A session in Discord on a NotebookLM topic
+- **Orchestration flow (Discord)**:
+  1. Call `quiz --keywords X` → get JSON with `notebook_id` + `questions[]`
+  2. Send Q1 to Discord, wait for user reply
+  3. Call `evaluate --notebook-id X --question Q1 --answer <reply>` → get JSON feedback
+  4. Post feedback to Discord, proceed to Q2
+  5. Repeat until all questions done or user says stop
 
 Trigger `persist` subcommand when:
 - User says "存到 Obsidian", "把这段内容写入知识库", "persist this to vault"

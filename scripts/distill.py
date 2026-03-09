@@ -229,7 +229,19 @@ def process_notebook(nlm_cli: str, notebook_id: str, notebook_name: str,
             num = f"{i:02d}"
             logging.info(f"[{num}/{len(questions)}] {q[:70]}...")
             answer = ask_question(nlm_cli, q, notebook_id)
-            body_parts += [f"## Q{num}", "", f"> [!question]", f"> {q}", "", f"**Answer:**\n\n{answer}", "", "---", ""]
+            misconception_prompt = (
+                f"For the question: '{q}' — "
+                "What is the most common misconception or thinking trap that a learner would fall into? "
+                "What key insight do they typically miss? Keep it to 2-3 sentences."
+            )
+            misconception = ask_question(nlm_cli, misconception_prompt, notebook_id)
+            body_parts += [
+                f"## Q{num}", "",
+                f"> [!question]", f"> {q}", "",
+                f"**Answer:**\n\n{answer}", "",
+                f"> [!warning] Common Misconception", f"> {misconception}",
+                "", "---", "",
+            ]
             time.sleep(2)
 
     elif mode == "summary":
@@ -273,6 +285,77 @@ def cmd_distill(args) -> None:
         process_notebook(args.cli_path, nid, name, args.topic, vault_dir, args.mode, date_str)
 
     logging.info("=== All done! ===")
+
+
+# ---------------------------------------------------------------------------
+# Subcommand: quiz  (Discord-friendly interactive quiz — agent-orchestrated)
+# ---------------------------------------------------------------------------
+
+def cmd_quiz(args) -> None:
+    """Generate quiz questions as JSON for agent-orchestrated Discord quiz."""
+    notebooks = get_notebooks(args.cli_path, args.keywords)
+    if not notebooks:
+        print(json.dumps({"error": f"No notebooks matched: {', '.join(args.keywords)}"}))
+        sys.exit(1)
+
+    nb_id, nb_name = notebooks[0]  # Use first match
+    logging.info(f"Generating quiz questions for: {nb_name} ({nb_id})")
+
+    prompt = (
+        f"Generate exactly {args.count} questions that would expose whether someone deeply understands "
+        "this subject versus someone who has only memorised facts. "
+        "Questions must require reasoning, connecting concepts, or explaining WHY — not recalling facts. "
+        "Include edge cases, apparent contradictions, and non-obvious consequences. "
+        "Output one question per line. No numbering, no prefixes, no markdown."
+    )
+    output = run_command([args.cli_path, "ask", prompt, "--notebook", nb_id, "--new"])
+    questions = []
+    if output:
+        cleaned = clean_cli_output(output)
+        for line in cleaned.split('\n'):
+            line = re.sub(r'^[\d\.\-\*\sQA:：]+', '', line).strip()
+            if len(line) >= 8 and not re.search(r'^(here are|以下是|如下|问题列表)', line, re.IGNORECASE):
+                questions.append(line)
+
+    result = {
+        "notebook_id": nb_id,
+        "notebook_name": nb_name,
+        "questions": questions[:args.count],
+        "total": len(questions[:args.count]),
+    }
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+# ---------------------------------------------------------------------------
+# Subcommand: evaluate  (Discord answer evaluation — agent-orchestrated)
+# ---------------------------------------------------------------------------
+
+def cmd_evaluate(args) -> None:
+    """Evaluate a user's answer against notebook sources. Outputs JSON for agent."""
+    prompt = (
+        f"A learner was asked this question: '{args.question}'\n\n"
+        f"Their answer was: '{args.answer}'\n\n"
+        "Based only on the sources in this notebook, evaluate their answer in three parts:\n"
+        "1. What they got right (be specific)\n"
+        "2. What key insight they are missing or got wrong\n"
+        "3. The complete, correct answer in 3-5 sentences\n\n"
+        "Be direct and educational. Do not be vague."
+    )
+    output = run_command(
+        [args.cli_path, "ask", prompt, "--notebook", args.notebook_id, "--new"],
+        timeout=60,
+    )
+    if not output:
+        print(json.dumps({"error": "No response from NotebookLM"}))
+        sys.exit(1)
+
+    feedback = clean_cli_output(output)
+    result = {
+        "question": args.question,
+        "user_answer": args.answer,
+        "feedback": feedback,
+    }
+    print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
 # ---------------------------------------------------------------------------
@@ -411,6 +494,26 @@ Examples:
     p_research.add_argument("--cli-path", default="notebooklm",
                             help="Path to the notebooklm CLI")
 
+    # --- quiz ---
+    p_quiz = sub.add_parser("quiz", help="Generate quiz questions as JSON for Discord quiz sessions.")
+    p_quiz.add_argument("--keywords", nargs="+", required=True,
+                        help="Keywords to match against notebook titles")
+    p_quiz.add_argument("--count", type=int, default=10,
+                        help="Number of questions to generate (default: 10)")
+    p_quiz.add_argument("--cli-path", default="notebooklm",
+                        help="Path to the notebooklm CLI")
+
+    # --- evaluate ---
+    p_evaluate = sub.add_parser("evaluate", help="Evaluate a user's answer against notebook sources.")
+    p_evaluate.add_argument("--notebook-id", required=True,
+                            help="NotebookLM notebook ID (from quiz output)")
+    p_evaluate.add_argument("--question", required=True,
+                            help="The question that was asked")
+    p_evaluate.add_argument("--answer", required=True,
+                            help="The user's answer to evaluate")
+    p_evaluate.add_argument("--cli-path", default="notebooklm",
+                            help="Path to the notebooklm CLI")
+
     # --- persist ---
     p_persist = sub.add_parser("persist", help="Write markdown content directly into Obsidian.")
     p_persist.add_argument("--vault-dir", required=True,
@@ -428,7 +531,13 @@ Examples:
 
     args = parser.parse_args()
 
-    dispatch = {"distill": cmd_distill, "research": cmd_research, "persist": cmd_persist}
+    dispatch = {
+        "distill": cmd_distill,
+        "research": cmd_research,
+        "persist": cmd_persist,
+        "quiz": cmd_quiz,
+        "evaluate": cmd_evaluate,
+    }
     dispatch[args.command](args)
 
 

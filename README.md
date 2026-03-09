@@ -9,9 +9,11 @@ An [OpenClaw](https://github.com/openclaw) skill that extracts knowledge from Go
 ## Features
 
 - **`distill`** — Extract knowledge from existing NotebookLM notebooks into Obsidian
-  - Three modes: `qa` (15-20 deep Q&A pairs), `summary` (5-section structured note), `glossary` (15-30 domain terms)
+  - Three modes: `qa` (15-20 deep Q&A pairs + common misconception per question), `summary` (5-section expert knowledge map), `glossary` (15-30 domain terms with expert vs beginner usage)
   - Keyword-based notebook matching (case-insensitive substring)
   - Auto-generated YAML frontmatter compatible with Obsidian
+- **`quiz`** — Generate quiz questions as JSON for agent-orchestrated interactive sessions (e.g. Discord)
+- **`evaluate`** — Evaluate a user's answer against notebook sources; returns structured feedback as JSON
 - **`research`** — Start a NotebookLM web research session on any topic, wait for completion, output the notebook ID for follow-up distillation
 - **`persist`** — Write any Markdown content directly into your Obsidian vault with frontmatter
 
@@ -90,6 +92,59 @@ status: draft
 
 **Answer:**
 ...
+```
+
+---
+
+### Subcommand: `quiz` + `evaluate` (Discord interactive quiz)
+
+These two subcommands are designed to be orchestrated by an agent (e.g. OpenClaw) to run an interactive quiz inside Discord or any chat interface.
+
+**Step 1 — Generate questions:**
+```bash
+python3 distill.py quiz \
+  --keywords "machine learning" \
+  --count 10
+```
+
+Output (JSON):
+```json
+{
+  "notebook_id": "abc123",
+  "notebook_name": "ML Research Notes",
+  "questions": [
+    "Why does dropout work differently at inference time than training time?",
+    "..."
+  ],
+  "total": 10
+}
+```
+
+**Step 2 — Evaluate a user's answer:**
+```bash
+python3 distill.py evaluate \
+  --notebook-id "abc123" \
+  --question "Why does dropout work differently at inference time?" \
+  --answer "Because we don't want randomness when predicting"
+```
+
+Output (JSON):
+```json
+{
+  "question": "Why does dropout work differently...",
+  "user_answer": "Because we don't want randomness when predicting",
+  "feedback": "What you got right: ... What you're missing: ... Complete answer: ..."
+}
+```
+
+**Agent orchestration flow (Discord example):**
+```
+Agent calls quiz → gets questions list
+  → posts Q1 to Discord
+  → waits for user reply
+  → calls evaluate with user's reply
+  → posts NLM feedback to Discord
+  → posts Q2 → repeat
 ```
 
 ---

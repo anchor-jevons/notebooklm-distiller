@@ -9,9 +9,11 @@
 ## 功能特性
 
 - **`distill`** — 从已有 NotebookLM 笔记本中提取知识，写入 Obsidian
-  - 三种模式：`qa`（15-20 对深度问答）、`summary`（五节结构化摘要）、`glossary`（15-30 个领域术语）
+  - 三种模式：`qa`（15-20 对深度问答，每题附常见误解警告）、`summary`（五节专家知识地图）、`glossary`（15-30 个领域术语，含专家 vs 新手用法对比）
   - 基于关键词的笔记本匹配（大小写不敏感，子字符串匹配）
   - 自动生成 Obsidian 兼容的 YAML frontmatter
+- **`quiz`** — 生成测验问题（JSON 输出），供 agent 编排的 Discord 互动测验使用
+- **`evaluate`** — 将用户答案送入 NLM 评估，返回结构化反馈 JSON
 - **`research`** — 对任意主题发起 NotebookLM 网络调研，等待完成后输出笔记本 ID，供后续蒸馏使用
 - **`persist`** — 将任意 Markdown 内容直接写入 Obsidian vault，自动附加 frontmatter
 
@@ -148,6 +150,59 @@ python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py persist \
   --vault-dir "/path/to/Obsidian/Vault" \
   --path "Research/草稿.md" \
   --file ~/Desktop/草稿.md
+```
+
+---
+
+### 子命令：`quiz` + `evaluate`（Discord 互动测验）
+
+这两个子命令专为 agent（如 OpenClaw）编排的 Discord 互动答题设计，不需要终端交互。
+
+**第一步 — 生成问题：**
+```bash
+python3 distill.py quiz \
+  --keywords "机器学习" \
+  --count 10
+```
+
+输出（JSON）：
+```json
+{
+  "notebook_id": "abc123",
+  "notebook_name": "ML Research Notes",
+  "questions": [
+    "为什么 dropout 在推理阶段和训练阶段的行为不同？",
+    "..."
+  ],
+  "total": 10
+}
+```
+
+**第二步 — 评估用户答案：**
+```bash
+python3 distill.py evaluate \
+  --notebook-id "abc123" \
+  --question "为什么 dropout 在推理阶段和训练阶段的行为不同？" \
+  --answer "因为推理时不需要随机性"
+```
+
+输出（JSON）：
+```json
+{
+  "question": "为什么 dropout ...",
+  "user_answer": "因为推理时不需要随机性",
+  "feedback": "答对的部分：... 遗漏的关键点：... 完整答案：..."
+}
+```
+
+**Discord Agent 编排流程：**
+```
+Agent 调用 quiz → 获取问题列表
+  → 把 Q1 发到 Discord
+  → 等待用户回复
+  → 带用户回复调用 evaluate
+  → 把 NLM 反馈发到 Discord
+  → 发 Q2 → 循环
 ```
 
 ---
