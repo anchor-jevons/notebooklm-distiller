@@ -65,6 +65,8 @@ python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py distill \
 | `--topic` | ✅ | 输出文件在 `--vault-dir` 下的子目录名 |
 | `--vault-dir` | ✅ | Obsidian vault 路径（或任意输出目录） |
 | `--mode` | | `qa`（默认）、`summary` 或 `glossary` |
+| `--lang` | | 输出语言：`en`（默认）或 `zh`（中文） |
+| `--writeback` | | 同时将蒸馏结果写回 NotebookLM 笔记本作为来源笔记 |
 | `--cli-path` | | `notebooklm` 可执行文件路径（不在 $PATH 时使用） |
 
 **输出格式示例：**
@@ -258,6 +260,23 @@ YourVault/
 ```
 
 ---
+
+## 输出语言
+
+默认输出为英文。使用 `--lang zh` 可切换为中文输出，适用于 `distill`、`quiz`、`evaluate` 三个子命令：
+
+```bash
+python3 distill.py distill --keywords "Machine Learning" --topic "AI" \
+  --vault-dir ~/Obsidian/Vault --mode summary --lang zh
+```
+
+## 关于 NotebookLM 对话历史的说明
+
+脚本内部使用 `notebooklm ask --new` 命令，该命令创建的是**临时 CLI 会话**，不会出现在 NotebookLM 网页端的对话历史中。这是预期行为 —— CLI 与 Web UI 使用独立的会话空间。
+
+**含义：** distill、quiz、evaluate 的查询不会显示在笔记本的历史记录里，但回答仍然来自你指定笔记本的原始资料，CLI 会将查询限定在 `--notebook` 所指定的笔记本 ID 范围内，不会使用笔记本以外的知识。
+
+**如何验证来源：** 蒸馏完成后，可将输出中的关键短语粘贴到 NotebookLM 网页端搜索，确认它来自原始资料。
 
 ## 常见问题
 
