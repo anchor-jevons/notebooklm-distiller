@@ -91,16 +91,32 @@ python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py distill \
   --keywords "<keyword1>" "<keyword2>" \
   --topic "<TopicFolderName>" \
   --vault-dir "<path/to/obsidian/vault>" \
-  --mode <qa|summary|glossary> \
-  [--lang zh]        # Add for Chinese output (default: en)
-  [--writeback]      # Write distilled content back into NLM notebook as a note
+  --mode <qa|summary|glossary> \   # legacy; ignored when --template is set
+  [--template <name>]              # NEW: use a named output template (see table below)
+  [--auto-route]                   # NEW: infer template from notebook name automatically
+  [--lang zh]                      # Add for Chinese output (default: en)
+  [--writeback]                    # Write distilled content back into NLM notebook as a note
   [--cli-path <path/to/notebooklm>]
 ```
 
-**Modes:**
+**Legacy modes** (used when `--template` / `--auto-route` are not set):
 - `qa` (default) — generates 15-20 questions + answers → `<NotebookName>_QA.md`
-- `summary` — 5 structured sections (Summary, Key Points, Constraints, Trade-offs, Open Questions) → `<NotebookName>_Summary.md`
+- `summary` — 5 structured sections → `<NotebookName>_Summary.md`
 - `glossary` — 15-30 domain terms + definitions → `<NotebookName>_Glossary.md`
+
+**Template names** (`--template <name>`):
+
+| Name | Output file suffix | Best for |
+|------|--------------------|---------|
+| `brief` | `_ExecutiveBrief.md` | 高管速读 / financial reports |
+| `notes` | `_LearningNotes.md` | 个人复盘 / tutorials, courses |
+| `report` | `_DeepDiveReport.md` | 深度研究 / papers, analyses |
+| `slides` | `_Slides.md` | 演讲分享 / presentations |
+| `plan` | `_ActionPlan.md` | 项目落地 / requirements docs |
+| `audio-popular` | `_AudioPodcast_Popular.md` | 科普播客脚本 (general audience) |
+| `audio-pro` | `_AudioPodcast_Pro.md` | 专业播客脚本 (practitioners) |
+
+`--template` takes priority over `--mode`; `--auto-route` routes per notebook name (lower priority than explicit `--template`).
 
 **Flags:**
 - `--lang zh` — prepends `请用中文回答` to all NLM prompts; add when user requests Chinese output or context is Chinese
@@ -165,6 +181,9 @@ status: draft
 **Answer:**
 
 <answer from notebook sources>
+
+> [!warning] Common Misconception
+> <the most common thinking trap or key insight learners miss — 2-3 sentences>
 
 ---
 ```

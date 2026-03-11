@@ -268,6 +268,77 @@ GLOSSARY_PROMPT = (
 )
 
 
+# ---------------------------------------------------------------------------
+# Template library (loaded from templates.json)
+# Edit templates.json to add/modify templates without touching this file.
+# ---------------------------------------------------------------------------
+
+_TEMPLATES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates.json")
+
+
+def _load_templates() -> dict:
+    """Load template definitions from templates.json."""
+    if not os.path.isfile(_TEMPLATES_FILE):
+        return {}
+    with open(_TEMPLATES_FILE, encoding="utf-8") as f:
+        data = json.load(f)
+    # Strip metadata keys (starting with _)
+    return {k: v for k, v in data.items() if not k.startswith("_")}
+
+
+TEMPLATES: dict = _load_templates()
+
+
+def get_template_names() -> list:
+    """Return sorted list of available template names."""
+    return sorted(TEMPLATES.keys())
+
+
+def get_template_meta(template: str) -> tuple:
+    """Return (file_suffix, display_title) for a template."""
+    t = TEMPLATES.get(template, {})
+    return t.get("file_suffix", f"_{template}.md"), t.get("title", template)
+
+
+# ---------------------------------------------------------------------------
+# Template auto-routing
+# ---------------------------------------------------------------------------
+
+def _validate_template_format(template: str, content: str, section_heading: str) -> None:
+    """Warn if NLM output doesn't match the expected format for structured templates."""
+    if template in ("audio-popular", "audio-pro"):
+        if not re.search(
+            r'(?:Host [AB]|主持人\s*[AB]?|[AB]\s*:|Speaker [12])',
+            content, re.IGNORECASE
+        ):
+            logging.warning(
+                f"[FORMAT] Audio section '{section_heading}' may lack dialogue markers "
+                "(e.g. 'Host A:'). NLM may have returned prose instead of a script. "
+                "To enforce format, strengthen the 'prompt' in templates.json for this section."
+            )
+    elif template == "slides":
+        if "##" not in content:
+            logging.warning(
+                f"[FORMAT] Slides section '{section_heading}' has no '##' slide headings. "
+                "NLM may have returned prose. Strengthen the 'prompt' in templates.json."
+            )
+
+
+def auto_route_template(notebook_name: str) -> str:
+    """Infer best template from notebook name keywords.
+
+    Returns template name on match, or empty string '' if no keywords match
+    (caller should fall back to --mode).
+    """
+    name_lower = notebook_name.lower()
+    for tpl_name, tpl_def in TEMPLATES.items():
+        keywords = tpl_def.get("auto_route_keywords", [])
+        if any(kw in name_lower for kw in keywords):
+            return tpl_name
+    return ""  # no match → fall back to --mode
+
+
+
 def writeback_to_notebook(nlm_cli: str, notebook_id: str, content: str,
                           note_title: str) -> bool:
     """Write content back into the NotebookLM notebook as a text source/note.
@@ -298,14 +369,67 @@ def writeback_to_notebook(nlm_cli: str, notebook_id: str, content: str,
 
 def process_notebook(nlm_cli: str, notebook_id: str, notebook_name: str,
                      topic: str, vault_dir: str, mode: str, date_str: str,
-                     lang: str = "en", writeback: bool = False) -> None:
-    """Extract knowledge from one notebook and write an Obsidian note."""
+                     lang: str = "en", writeback: bool = False,
+                     template: str = "") -> None:
+    """Extract knowledge from one notebook and write an Obsidian note.
+
+    If *template* is set, the named template from TEMPLATES is used instead of
+    the legacy mode (qa / summary / glossary).  The legacy modes are preserved
+    unchanged.
+    """
     safe_nb = sanitize_filename(notebook_name)
+    source_label = f"NotebookLM/{notebook_name}"
+
+    # ------------------------------------------------------------------ #
+    #  Template path — iterates sections for multi-prompt templates       #
+    # ------------------------------------------------------------------ #
+    if template:
+        if template not in TEMPLATES:
+            logging.error(f"[FATAL] Unknown template '{template}'. Valid: {get_template_names()}")
+            sys.exit(1)
+        tpl_def = TEMPLATES[template]
+        file_suffix, title_suffix = get_template_meta(template)
+        sections = tpl_def.get("sections", [])
+        if not sections:
+            logging.error(f"[FATAL] Template '{template}' has no sections defined.")
+            sys.exit(1)
+
+        out_path = os.path.join(vault_dir, sanitize_filename(topic), safe_nb + file_suffix)
+        title = f"{notebook_name} | {title_suffix}"
+        fm = build_frontmatter(title, date_str, source_label, topic, f"template:{template}")
+        header = f"# {notebook_name} — {title_suffix}\n"
+        body_parts = [fm, "", header, ""]
+
+        logging.info(f"--- [TEMPLATE:{template.upper()}] {notebook_name} ({len(sections)} section(s)) ---")
+        for i, section in enumerate(sections, 1):
+            heading = section.get("heading", f"Section {i}")
+            prompt = section.get("prompt", "")
+            logging.info(f"  [{i}/{len(sections)}] {heading} ...")
+            answer = ask_question(nlm_cli, prompt, notebook_id, lang=lang)
+            _validate_template_format(template, answer, heading)
+            body_parts += [f"## {heading}", "", answer, "", "---", ""]
+            if i < len(sections):
+                time.sleep(2)
+
+        body_parts += ["", "*Extracted by notebooklm-distiller*"]
+        full_content = '\n'.join(body_parts)
+        write_note(out_path, full_content)
+        logging.info(f"Template distillation complete → {out_path}")
+
+        if writeback:
+            fm_end = full_content.find('\n---\n', 4)
+            writeback_body = full_content[fm_end + 5:].strip() if fm_end != -1 else full_content
+            note_title = f"Distill Log: {template} | {notebook_name} | {date_str}"
+            writeback_to_notebook(nlm_cli, notebook_id, writeback_body, note_title)
+        return
+
+    # ------------------------------------------------------------------ #
+    #  Legacy mode path (qa / summary / glossary) — unchanged             #
+    # ------------------------------------------------------------------ #
     suffix_map = {"qa": ("_QA.md", "Deep Q&A"), "summary": ("_Summary.md", "Summary"), "glossary": ("_Glossary.md", "Glossary")}
     file_suffix, title_suffix = suffix_map[mode]
 
     out_path = os.path.join(vault_dir, sanitize_filename(topic), safe_nb + file_suffix)
-    source_label = f"NotebookLM/{notebook_name}"
     title = f"{notebook_name} | {title_suffix}"
 
     fm = build_frontmatter(title, date_str, source_label, topic, mode)
@@ -373,7 +497,15 @@ def cmd_distill(args) -> None:
         sys.exit(1)
 
     date_str = datetime.now().strftime("%Y-%m-%d")
-    logging.info(f"=== Distill: keywords={args.keywords} mode={args.mode} ===")
+
+    # Resolve template: explicit > auto-route > None (fall back to --mode)
+    resolved_template = getattr(args, 'template', '') or ''
+    if not resolved_template and getattr(args, 'auto_route', False):
+        # We need at least one notebook name to route; use first keyword as proxy
+        # (real routing happens per-notebook below)
+        resolved_template = "__auto__"
+
+    logging.info(f"=== Distill: keywords={args.keywords} mode={args.mode} template={resolved_template or 'none'} ===")
 
     notebooks = get_notebooks(args.cli_path, args.keywords)
     if not notebooks:
@@ -386,8 +518,16 @@ def cmd_distill(args) -> None:
 
     for nid, name in notebooks:
         logging.info(f"\n{'='*50}\nProcessing: {name}\n{'='*50}")
+        # Per-notebook template resolution for --auto-route
+        tpl = resolved_template
+        if tpl == "__auto__":
+            tpl = auto_route_template(name)
+            if tpl:
+                logging.info(f"[AUTO-ROUTE] '{name}' → template '{tpl}'")
+            else:
+                logging.info(f"[AUTO-ROUTE] '{name}' → no keyword match, falling back to --mode '{args.mode}'")
         process_notebook(args.cli_path, nid, name, args.topic, vault_dir, args.mode, date_str,
-                         lang=args.lang, writeback=args.writeback)
+                         lang=args.lang, writeback=args.writeback, template=tpl)
 
     logging.info("=== All done! ===")
 
@@ -551,6 +691,23 @@ def cmd_persist(args) -> None:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
+    # Early check: if --template or --auto-route is requested but templates.json is missing,
+    # print a clear error before argparse fails with a cryptic "invalid choice" message.
+    if not os.path.isfile(_TEMPLATES_FILE):
+        _tpl_requested = any(
+            a.startswith("--template") or a == "--auto-route"
+            for a in sys.argv[1:]
+        )
+        if _tpl_requested:
+            print(
+                f"[FATAL] templates.json not found: {_TEMPLATES_FILE}\n"
+                "  Copy templates.json from the skill repository into the scripts/ directory.\n"
+                "  Without it, --template and --auto-route are unavailable.\n"
+                "  Fallback: use --mode qa|summary|glossary instead.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
     parser = argparse.ArgumentParser(
         description="NotebookLM Distiller — knowledge extraction and management for Obsidian.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -580,7 +737,26 @@ Examples:
     p_distill.add_argument("--vault-dir", required=True,
                            help="Base Obsidian directory (e.g. ~/Obsidian/Vault/10_Projects)")
     p_distill.add_argument("--mode", choices=["qa", "summary", "glossary"], default="qa",
-                           help="Extraction strategy: qa (default), summary, or glossary")
+                           help="Extraction strategy (legacy): qa (default), summary, or glossary. "
+                                "Ignored when --template or --auto-route matches.")
+    tpl_names = get_template_names()
+    p_distill.add_argument(
+        "--template",
+        choices=tpl_names,
+        default="",
+        help=(
+            "Use a named output template instead of --mode. "
+            "Choices: " + ", ".join(tpl_names) + ". "
+            "--template takes priority over --mode."
+        ),
+    )
+    p_distill.add_argument(
+        "--auto-route",
+        action="store_true",
+        default=False,
+        help="Infer the best template automatically from the notebook name. "
+             "Falls back to --mode if no keywords match.",
+    )
     p_distill.add_argument("--cli-path", default=find_notebooklm_cli(),
                            help="Path to the notebooklm CLI (default: 'notebooklm' from PATH)")
     p_distill.add_argument("--lang", default="en", choices=["en", "zh"],

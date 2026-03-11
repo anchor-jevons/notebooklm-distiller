@@ -1,0 +1,100 @@
+{
+  "_comment": "NotebookLM Distiller template library. Edit this file to add/modify templates without touching distill.py.",
+  "audio-popular": {
+    "file_suffix": "_AudioPodcast_Popular.md",
+    "title": "Audio Podcast — Popular Science",
+    "auto_route_keywords": ["播客", "科普", "podcast", "popular"],
+    "sections": [
+      {
+        "heading": "Podcast Script (General Audience)",
+        "prompt": "Based on the sources in this notebook, write a podcast script for a general audience. Structure: (1) Opening Hook (30s) — one surprising fact or question; (2) Background (2 min) — why this topic matters; (3) Core content (10 min) — 3-4 key ideas, each illustrated with a story or analogy; (4) Summary and action tip (2 min) — what the listener can do; (5) Closing (30s). Tone: conversational and engaging. Avoid jargon; explain technical terms when needed. Cite data sources inline: [Source: title/date]. Format as a two-host dialogue."
+      }
+    ]
+  },
+  "audio-pro": {
+    "file_suffix": "_AudioPodcast_Pro.md",
+    "title": "Audio Podcast — Professional",
+    "auto_route_keywords": ["专业播客", "professional podcast"],
+    "sections": [
+      {
+        "heading": "Podcast Script (Professional)",
+        "prompt": "Based on the sources in this notebook, write a professional-level podcast script for industry practitioners. Structure: (1) Industry context (2 min); (2) Deep analysis (15 min) — technology/business model breakdown, pros/cons, data-backed insights; (3) Future outlook (2 min); (4) Practitioner recommendations (1 min). Tone: authoritative and precise. Include specific data, contrasting viewpoints, and identify information gaps. Cite all key claims. Format as a two-host dialogue."
+      }
+    ]
+  },
+  "slides": {
+    "file_suffix": "_Slides.md",
+    "title": "Slides Deck",
+    "auto_route_keywords": ["分享", "演讲", "会议", "presentation", "slides", "deck", "talk"],
+    "sections": [
+      {
+        "heading": "Opening Slides (Title, Agenda, Background)",
+        "prompt": "Based on the sources in this notebook, produce the opening slides of a presentation deck. Include: (1) Title slide with topic and subtitle; (2) Agenda slide listing the talk structure; (3) Problem/Background slide explaining why this topic matters. Each slide should have a title and up to 5 bullet points. Suggest a chart or diagram where relevant. Annotate data sources at the bottom."
+      },
+      {
+        "heading": "Core Insight Slides",
+        "prompt": "Based on the sources in this notebook, produce the core insight slides of a presentation (slides 4-9). Cover 3-5 major findings or insights with supporting evidence. Each slide should have a title and up to 5 bullet points. Suggest charts or diagrams where relevant. Annotate data sources at the bottom of each slide. Avoid dense paragraphs — use bullet points throughout."
+      },
+      {
+        "heading": "Closing Slides (Challenges, Summary, Q&A)",
+        "prompt": "Based on the sources in this notebook, produce the closing slides of a presentation. Include: (1) Challenges and limitations slide; (2) Solutions or recommendations slide; (3) Key takeaways summary (3 points max); (4) Call to action; (5) Q&A slide. Each slide should have a title and up to 5 bullet points. Annotate data sources at the bottom."
+      }
+    ]
+  },
+  "brief": {
+    "file_suffix": "_ExecutiveBrief.md",
+    "title": "Executive Brief",
+    "auto_route_keywords": ["财报", "q3", "q4", "营收", "增长", "earnings", "revenue", "profit"],
+    "sections": [
+      {
+        "heading": "Executive Brief",
+        "prompt": "Based on the sources in this notebook, write a one-page executive brief for a senior decision-maker. Structure as markdown sections: (1) Executive Summary — 3 lines: what it is, why it matters, recommended action; (2) Key Findings — 3-4 bullet points, each with data + implication; (3) Core Metrics — the 3 most important numbers; (4) Action Recommendations — 1-2 concrete next steps; (5) Risk Flags — main risks and mitigations; (6) Reference — note the source notebook name. Constraints: total length under 300 words; conclusions first; no jargon without explanation. Cite all key claims."
+      }
+    ]
+  },
+  "notes": {
+    "file_suffix": "_LearningNotes.md",
+    "title": "Learning Notes",
+    "auto_route_keywords": ["教程", "指南", "如何", "步骤", "tutorial", "guide", "how-to", "course"],
+    "sections": [
+      {
+        "heading": "Learning Notes",
+        "prompt": "Based on the sources in this notebook, create structured learning notes for personal review. Structure: (1) Content overview — source, core topic, target audience; (2) Core concepts — concept name, definition, personal understanding; (3) Key insights — most surprising or counter-intuitive points, connections to prior knowledge; (4) Practical applications — where and how to apply this; (5) Open questions — unclear areas and next-study items; (6) Action items — checkboxes with concrete tasks for this week. Style: personal, practical. Paraphrase in your own words; use analogies and examples."
+      }
+    ]
+  },
+  "plan": {
+    "file_suffix": "_ActionPlan.md",
+    "title": "Action Plan",
+    "auto_route_keywords": ["决策", "方案", "建议", "行动", "action", "plan", "project", "roadmap"],
+    "sections": [
+      {
+        "heading": "Action Plan",
+        "prompt": "Based on the sources in this notebook, produce an actionable project plan. Structure: (1) Objective statement — specific and measurable; (2) Task breakdown — markdown table with columns: #, Task, Owner, Deadline, Dependencies; (3) Key milestones — M1, M2, M3 with target dates; (4) Risks and mitigations — table with: Risk, Impact, Mitigation; (5) Success criteria — checkboxes; (6) Resource requirements — people, budget, tools. Constraints: each task completable within one week; use concrete verbs (avoid 'enhance' or 'promote')."
+      }
+    ]
+  },
+  "report": {
+    "file_suffix": "_DeepDiveReport.md",
+    "title": "Deep Dive Report",
+    "auto_route_keywords": ["论文", "研究", "实证", "数据", "paper", "research", "study", "analysis"],
+    "sections": [
+      {
+        "heading": "Executive Summary & Background",
+        "prompt": "Based on the sources in this notebook, write the opening sections of a deep-dive analysis report. Include: (1) Executive Summary — key conclusions, most important data points, and top recommendations in a concise paragraph; (2) Background — problem definition, domain context, and research methodology or approach used by the sources. Every claim must be supported by data or citation. Clearly distinguish facts from opinions."
+      },
+      {
+        "heading": "Core Analysis",
+        "prompt": "Based on the sources in this notebook, write the core analysis section of a deep-dive report. Present 3 major findings, each with detailed argumentation and supporting evidence. For each finding: state the finding clearly, provide the evidence, explain why it matters, and note any caveats. Strictly cite all sources. Flag uncertain areas explicitly."
+      },
+      {
+        "heading": "Comparative Analysis & Deep Insights",
+        "prompt": "Based on the sources in this notebook, write the comparative analysis and insights sections. Include: (1) Comparative Analysis — how this work compares to related work or alternative approaches, strengths and weaknesses; (2) Deep Insights — root causes behind the findings, potential downstream impact, and future trends. Clearly distinguish facts from opinions. Cite all sources."
+      },
+      {
+        "heading": "Recommendations & Limitations",
+        "prompt": "Based on the sources in this notebook, write the closing sections of a deep-dive report. Include: (1) Recommendations — role-specific actionable advice (e.g. for practitioners, for decision-makers, for researchers); (2) Limitations — gaps in this analysis, assumptions made, areas where evidence is insufficient; (3) Next Steps — open questions worth further investigation. Be concrete and honest about what is not known."
+      }
+    ]
+  }
+}
