@@ -847,10 +847,27 @@ def cmd_generate_slides(args) -> None:
     
     if args.language:
         cmd.extend(["--language", args.language])
-    
-    # Add custom prompt if provided
+
+    # Build the instructions prompt.
+    # If --language is zh_Hans (or not set, defaulting to Chinese per workflow),
+    # inject mandatory Chinese-output + architect-audience constraints.
+    # User-supplied --custom-prompt appends after the defaults.
+    lang = getattr(args, "language", None) or "zh_Hans"
+    is_chinese = lang.lower().startswith("zh")
+
+    default_prompt_parts = []
+    if is_chinese:
+        default_prompt_parts.append(
+            "请使用中文生成幻灯片。"
+            "面向系统架构师和技术负责人，深度技术内容，不少于20页。"
+            "每页聚焦一个核心概念，包含关键要点和架构洞察。"
+        )
+
     if args.custom_prompt:
-        cmd.append(args.custom_prompt)
+        default_prompt_parts.append(args.custom_prompt)
+
+    if default_prompt_parts:
+        cmd.append(" ".join(default_prompt_parts))
     
     logging.info(f"[RUN] {' '.join(cmd)}")
     output = run_command(cmd, timeout=300)  # Longer timeout for slide generation
