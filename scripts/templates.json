@@ -3,29 +3,61 @@
   "audio-popular": {
     "file_suffix": "_AudioPodcast_Popular.md",
     "title": "Audio Podcast — Popular Science",
-    "auto_route_keywords": ["播客", "科普", "podcast", "popular"],
+    "auto_route_keywords": [
+      "播客",
+      "科普",
+      "podcast",
+      "popular"
+    ],
     "sections": [
       {
-        "heading": "Podcast Script (General Audience)",
-        "prompt": "Based on the sources in this notebook, write a podcast script for a general audience. Structure: (1) Opening Hook (30s) — one surprising fact or question; (2) Background (2 min) — why this topic matters; (3) Core content (10 min) — 3-4 key ideas, each illustrated with a story or analogy; (4) Summary and action tip (2 min) — what the listener can do; (5) Closing (30s). Tone: conversational and engaging. Avoid jargon; explain technical terms when needed. Cite data sources inline: [Source: title/date]. Format as a two-host dialogue."
+        "heading": "Opening & Setup (科普播客开场)",
+        "prompt": "Based on the sources in this notebook, write the opening segment (approx. 3 min) of a popular-science podcast. Two hosts: HOST A is an enthusiastic generalist who finds this topic exciting and asks the questions a curious layperson would ask; HOST B is a knowledgeable but skeptical expert who corrects oversimplifications and is quick to say 'it's more complicated than that'. Format: HOST A: ... / HOST B: ... dialogue. This segment must include: (1) A surprising hook — one fact or claim that seems wrong at first; (2) HOST A makes an intuitive assumption about the topic; (3) HOST B immediately challenges or complicates that assumption with evidence from the sources. Do NOT let both hosts agree easily. End with an open question that sets up the rest of the episode. Cite sources inline: [Source: title]."
+      },
+      {
+        "heading": "Core Explainer with Debate (核心内容与分歧)",
+        "prompt": "Based on the sources in this notebook, write the core segment (approx. 10 min) of a popular-science podcast. Two hosts: HOST A (enthusiastic generalist, optimistic, drawn to exciting implications); HOST B (skeptical expert, focuses on caveats, failure modes, and what the evidence actually supports). Format: HOST A: ... / HOST B: ... dialogue. This segment must include: (1) 3 key ideas from the sources, introduced by HOST A in plain language; (2) For EACH idea, HOST B pushes back with a specific limitation, counterexample, or nuance — not just to be difficult, but because the evidence genuinely supports a more complex picture; (3) At least one moment where HOST B says something like 'Actually, the data shows the opposite in certain conditions...' or 'People often assume X, but the sources point to Y'; (4) HOST A may update their view in response, or hold their ground with a valid reason. Avoid empty affirmations ('Great point!', 'Exactly!'). Cite sources inline: [Source: title]."
+      },
+      {
+        "heading": "Critical Reflection & Takeaway (批判性反思与总结)",
+        "prompt": "Based on the sources in this notebook, write the closing segment (approx. 3 min) of a popular-science podcast. Two hosts: HOST A (optimistic generalist); HOST B (critical expert). Format: HOST A: ... / HOST B: ... dialogue. This segment must: (1) Have HOST B explicitly name one thing the sources DON'T answer — a genuine knowledge gap or unresolved controversy; (2) Have HOST A offer a practical takeaway or analogy for the general audience; (3) Have HOST B qualify or refine that takeaway — what conditions would make it wrong?; (4) End with the hosts having a genuinely different opinion on whether this topic is overhyped, understated, or just right — no forced agreement. Cite sources inline: [Source: title]."
       }
     ]
   },
   "audio-pro": {
     "file_suffix": "_AudioPodcast_Pro.md",
     "title": "Audio Podcast — Professional",
-    "auto_route_keywords": ["专业播客", "professional podcast"],
+    "auto_route_keywords": [
+      "专业播客",
+      "professional podcast"
+    ],
     "sections": [
       {
-        "heading": "Podcast Script (Professional)",
-        "prompt": "Based on the sources in this notebook, write a professional-level podcast script for industry practitioners. Structure: (1) Industry context (2 min); (2) Deep analysis (15 min) — technology/business model breakdown, pros/cons, data-backed insights; (3) Future outlook (2 min); (4) Practitioner recommendations (1 min). Tone: authoritative and precise. Include specific data, contrasting viewpoints, and identify information gaps. Cite all key claims. Format as a two-host dialogue."
+        "heading": "Context & Framing (背景与立场确立)",
+        "prompt": "Based on the sources in this notebook, write the opening segment (approx. 3 min) of a professional podcast for industry practitioners. Two hosts: ALEX is a pragmatic practitioner who has shipped things and cares about what actually works in production; JORDAN is a systems-level critical thinker who asks 'what assumptions are we making?' and 'what breaks this at scale?'. Format: ALEX: ... / JORDAN: ... dialogue. This segment must: (1) Frame the problem space precisely — what is actually being solved, and for whom; (2) ALEX states a common industry assumption or narrative about this topic; (3) JORDAN immediately interrogates that assumption — what evidence supports it, what evidence contradicts it, what is being left out of the mainstream framing?; (4) End with a sharp framing question that will drive the rest of the episode. Cite all claims: [Source: title/date]. No vague generalities — every statement should be traceable to the sources."
+      },
+      {
+        "heading": "Deep Technical Debate (深度技术辩论)",
+        "prompt": "Based on the sources in this notebook, write the core analysis segment (approx. 15 min) of a professional podcast. Two hosts: ALEX (pragmatic practitioner, execution-focused, optimistic about near-term viability); JORDAN (critical architect, challenges assumptions, surfaces second-order effects and failure modes). Format: ALEX: ... / JORDAN: ... dialogue. This segment must: (1) Cover 3-4 major technical or business-model dimensions from the sources; (2) For EACH dimension, ALEX presents the dominant/optimistic view with supporting data; (3) JORDAN then provides a genuine counterargument — not strawman, but a well-sourced alternative interpretation or a condition under which the mainstream view fails; (4) Include at least 2 moments of real intellectual tension where the hosts hold different positions and neither backs down without a reason; (5) At least once, JORDAN should say something like 'The source says X, but if you read it carefully, it also implies Y, which most people ignore'; (6) At least once, ALEX should acknowledge a limitation but argue why it does not change the practical conclusion. Cite all claims: [Source: title/date]. Flag information gaps explicitly when the sources are insufficient."
+      },
+      {
+        "heading": "Stress-Test & Practitioner Synthesis (压力测试与实践总结)",
+        "prompt": "Based on the sources in this notebook, write the closing segment (approx. 4 min) of a professional podcast. Two hosts: ALEX (practitioner, action-oriented); JORDAN (critical thinker, risk-aware). Format: ALEX: ... / JORDAN: ... dialogue. This segment must: (1) Have JORDAN explicitly stress-test the most optimistic conclusion from the previous section — 'What would have to be true for this to fail badly?'; (2) Have ALEX respond with what safeguards, conditions, or signals a practitioner should watch for; (3) Name 1-2 open questions the sources cannot answer — genuine unknowns that practitioners need to watch; (4) End with role-specific recommendations: what should a practitioner do THIS QUARTER based on what the sources actually support — not generic advice; (5) The hosts should close with a genuine disagreement on the level of urgency or risk — one sees this as more urgent, the other sees more reasons to wait. No forced resolution. Cite all claims: [Source: title/date]."
       }
     ]
   },
   "slides": {
     "file_suffix": "_Slides.md",
     "title": "Slides Deck",
-    "auto_route_keywords": ["分享", "演讲", "会议", "presentation", "slides", "deck", "talk"],
+    "auto_route_keywords": [
+      "分享",
+      "演讲",
+      "会议",
+      "presentation",
+      "slides",
+      "deck",
+      "talk"
+    ],
     "sections": [
       {
         "heading": "Opening Slides (Title, Agenda, Background)",
@@ -44,7 +76,16 @@
   "brief": {
     "file_suffix": "_ExecutiveBrief.md",
     "title": "Executive Brief",
-    "auto_route_keywords": ["财报", "q3", "q4", "营收", "增长", "earnings", "revenue", "profit"],
+    "auto_route_keywords": [
+      "财报",
+      "q3",
+      "q4",
+      "营收",
+      "增长",
+      "earnings",
+      "revenue",
+      "profit"
+    ],
     "sections": [
       {
         "heading": "Executive Brief",
@@ -55,7 +96,16 @@
   "notes": {
     "file_suffix": "_LearningNotes.md",
     "title": "Learning Notes",
-    "auto_route_keywords": ["教程", "指南", "如何", "步骤", "tutorial", "guide", "how-to", "course"],
+    "auto_route_keywords": [
+      "教程",
+      "指南",
+      "如何",
+      "步骤",
+      "tutorial",
+      "guide",
+      "how-to",
+      "course"
+    ],
     "sections": [
       {
         "heading": "Learning Notes",
@@ -66,7 +116,16 @@
   "plan": {
     "file_suffix": "_ActionPlan.md",
     "title": "Action Plan",
-    "auto_route_keywords": ["决策", "方案", "建议", "行动", "action", "plan", "project", "roadmap"],
+    "auto_route_keywords": [
+      "决策",
+      "方案",
+      "建议",
+      "行动",
+      "action",
+      "plan",
+      "project",
+      "roadmap"
+    ],
     "sections": [
       {
         "heading": "Action Plan",
@@ -77,7 +136,16 @@
   "report": {
     "file_suffix": "_DeepDiveReport.md",
     "title": "Deep Dive Report",
-    "auto_route_keywords": ["论文", "研究", "实证", "数据", "paper", "research", "study", "analysis"],
+    "auto_route_keywords": [
+      "论文",
+      "研究",
+      "实证",
+      "数据",
+      "paper",
+      "research",
+      "study",
+      "analysis"
+    ],
     "sections": [
       {
         "heading": "Executive Summary & Background",

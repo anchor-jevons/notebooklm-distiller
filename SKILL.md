@@ -1,13 +1,13 @@
 ---
 name: notebooklm-distiller
-version: 2.0.0
-description: "NotebookLM Distiller: Batch knowledge extraction from Google NotebookLM into Obsidian. Supports Q&A generation (15-20 deep questions), structured summaries, glossary extraction, web research sessions, and direct markdown persistence."
+version: 2.1.0
+description: "NotebookLM Distiller: Batch knowledge extraction from Google NotebookLM into Obsidian. Supports Q&A generation, structured summaries, glossary extraction, official Audio Overview generation (Deep Dive / Brief / Critique / Debate), web research sessions, and direct markdown persistence."
 license: MIT
 metadata:
   openclaw:
     emoji: "🧪"
     requires:
-      bins: ["python3", "notebooklm"]
+      bins: ["python3"]
     install:
       pip: ["notebooklm-py"]
     skillKey: "notebooklm-distiller"
@@ -25,8 +25,9 @@ permissions:
 
 Automated knowledge extraction pipeline: search NotebookLM notebooks by keyword → generate deep questions or structured summaries → write linked Obsidian markdown notes.
 
-**Five subcommands:**
-- `distill` — extract knowledge from existing notebooks (qa / summary / glossary)
+**Six subcommands:**
+- `distill` — extract knowledge from existing notebooks (qa / summary / glossary / templates)
+- `generate-audio` — trigger official NotebookLM Audio Overview (Deep Dive / Brief / Critique / Debate)
 - `quiz` — generate quiz questions as JSON for Discord-based interactive sessions
 - `evaluate` — evaluate a user's answer against notebook sources (JSON output)
 - `research` — start a web research session inside NotebookLM on any topic
@@ -38,6 +39,42 @@ Trigger `distill` subcommand when:
 - User types `/notebooklm-distill` or `/notebooklm-distill-summary`
 - User says "蒸馏", "提取知识", "distill notebooks", "extract from notebook"
 - User wants NotebookLM content structured into Obsidian notes
+
+Trigger `generate-audio --format deep-dive` when:
+- User says "生成播客", "帮我做一期播客", "深度播客", "深入探究", "对话版", "通俗讲解", "deep dive", "深度音频"
+- **Description**: A lively and engaging conversation between two hosts who interpret and connect themes in your sources.
+- Default format when user says "播客" without specifying style.
+- Default `--lang zh` when context is Chinese.
+
+Trigger `generate-audio --format critique` when:
+- User says "批判性分析音频", "专家评审", "评论模式", "帮我批判一下这个笔记本", "找茬", "批判性建议", "改进反馈", "critique 模式"
+- **Description**: An expert evaluation of your sources, designed to provide constructive feedback to help you improve your content.
+- User wants a critical review audio, not just a summary.
+
+Trigger `generate-audio --format debate` when:
+- User says "辩论音频", "debate 模式", "正反两方", "多视角辩论", "思维碰撞", "让他们吵起来"
+- **Description**: A thoughtful debate between two hosts, designed to clarify different perspectives on your sources.
+- User wants multiple opposing viewpoints argued out.
+
+Trigger `generate-audio --format brief` when:
+- User says "简报音频", "摘要", "brief 版本", "快速版播客", "快速了解", "5分钟版", "速览"
+- **Description**: A brief summary designed to help you quickly understand the core ideas of your sources.
+- User wants a short, conclusion-first audio.
+
+Trigger `generate-slides` when:
+- User says "生成 PPT", "做一份 Slide", "PPT 大纲", "Slide Deck"
+- **Description**: Trigger official NotebookLM Slide Deck generation with custom guidance.
+- Default `--format detailed` when user wants speaker notes.
+- Default `--lang zh_Hans` when context is Chinese.
+
+**Additional generate-audio modifiers** (agent should detect and append):
+- "用中文" / "中文播客" → `--lang zh` (already default)
+- "英文版" / "English" → `--lang en`
+- "长一点" / "详细版" / "30分钟" → `--length long`
+- "短一点" / "简短" / "5分钟" → `--length short`
+- "重点讨论 <X>" / "focus on <X>" → `--custom-prompt "重点讨论 <X>"`
+
+> ⚠️ `distill --template audio-popular` and `distill --template audio-pro` are **internal script templates only** — do NOT trigger them from user requests. They generate dialogue scripts for review purposes, not playable audio.
 
 Trigger `research` subcommand when:
 - User says "研究一下 <topic>", "做网络调研", "research this topic in NotebookLM"
@@ -55,6 +92,12 @@ Trigger `quiz` + `evaluate` subcommands when:
   6. Repeat until all questions done or user says stop
 - **CRITICAL**: Always show notebook source so user can verify questions came from NLM, not agent knowledge
 
+## Artifact Delivery Workflow (2026-03-15)
+- **Artifact Sync**: For any generated Audio or Slide Deck, the agent **MUST** perform a post-download copy to the Buddy Workspace:
+  - **Audio**: `/Users/jevons/.openclaw/workspace-buddy/inbox/notebooklm-audio/` (must be M4A container)
+  - **Slides**: `/Users/jevons/.openclaw/workspace-buddy/inbox/notebooklm-slides/`
+- **Path Reporting**: Always provide the full absolute path in the final message to the user.
+
 Trigger `persist` subcommand when:
 - User says "存到 Obsidian", "把这段内容写入知识库", "persist this to vault"
 - User wants to archive discussion output or raw notes into the vault
@@ -63,9 +106,9 @@ Trigger `persist` subcommand when:
 
 ## Prerequisites
 
-- **NotebookLM CLI**: `pip install notebooklm-py`
+- **NotebookLM CLI**: installed in deepreader venv — `/Users/jevons/.openclaw/skills/deepreader/.venv/bin/notebooklm`
 - **Authentication**: `notebooklm login` (creates `~/.book_client_session`)
-- **Python 3.10+** (standard library only — no extra pip packages needed for distill.py)
+- **Python interpreter**: ALWAYS use `/Users/jevons/.openclaw/skills/deepreader/.venv/bin/python3` (Python 3.11, notebooklm-py 0.3.4). Do NOT use system `python3` (3.9, outdated notebooklm-py 0.1.1) or any other interpreter.
 - **Obsidian vault directory** accessible on the local filesystem
 
 ## Subcommand: distill
@@ -87,7 +130,7 @@ Extract knowledge from one or more NotebookLM notebooks matching keywords.
 4. Execute distill.
 
 ```bash
-python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py distill \
+/Users/jevons/.openclaw/skills/deepreader/.venv/bin/python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py distill \
   --keywords "<keyword1>" "<keyword2>" \
   --topic "<TopicFolderName>" \
   --vault-dir "<path/to/obsidian/vault>" \
@@ -113,8 +156,8 @@ python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py distill \
 | `report` | `_DeepDiveReport.md` | 深度研究 / papers, analyses |
 | `slides` | `_Slides.md` | 演讲分享 / presentations |
 | `plan` | `_ActionPlan.md` | 项目落地 / requirements docs |
-| `audio-popular` | `_AudioPodcast_Popular.md` | 科普播客脚本 (general audience) |
-| `audio-pro` | `_AudioPodcast_Pro.md` | 专业播客脚本 (practitioners) |
+| `audio-popular` | `_AudioPodcast_Popular.md` | ⚠️ 内部脚本模板，不对外触发 |
+| `audio-pro` | `_AudioPodcast_Pro.md` | ⚠️ 内部脚本模板，不对外触发 |
 
 `--template` takes priority over `--mode`; `--auto-route` routes per notebook name (lower priority than explicit `--template`).
 
@@ -127,7 +170,7 @@ python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py distill \
 Start a NotebookLM web research session on a topic. Creates a new notebook, imports web sources, and waits for completion.
 
 ```bash
-python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py research \
+/Users/jevons/.openclaw/skills/deepreader/.venv/bin/python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py research \
   --topic "<Research Topic>" \
   [--mode deep|fast] \
   [--cli-path <path/to/notebooklm>]
@@ -141,7 +184,7 @@ Write any markdown content into the Obsidian vault with auto-generated YAML fron
 
 ```bash
 # From inline content
-python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py persist \
+/Users/jevons/.openclaw/skills/deepreader/.venv/bin/python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py persist \
   --vault-dir "<path/to/obsidian/vault>" \
   --path "Notes/2026-03-09-meeting.md" \
   --title "Meeting Notes" \
@@ -149,7 +192,7 @@ python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py persist \
   --tags "meeting,notes"
 
 # From a file
-python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py persist \
+/Users/jevons/.openclaw/skills/deepreader/.venv/bin/python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py persist \
   --vault-dir "<path/to/obsidian/vault>" \
   --path "Notes/draft.md" \
   --file ~/Desktop/draft.md

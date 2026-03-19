@@ -188,6 +188,7 @@ def parse_questions(raw_output: str) -> List[str]:
 
 _LANG_PREFIX = {
     "zh": "请用中文回答。\n\n",
+    "zh_Hans": "请用中文回答。\n\n",
     "en": "",
 }
 
@@ -685,6 +686,232 @@ def cmd_persist(args) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Subcommand: generate-audio (official NotebookLM audio generation)
+# ---------------------------------------------------------------------------
+
+def cmd_generate_audio(args) -> None:
+    """Generate official NotebookLM Audio Overview (Deep Dive / Brief / Critique / Debate).
+    
+    Fixed version (2026-03-18): Uses --no-wait + artifact wait to avoid CLI's internal
+    300s timeout. Audio generation typically takes 5-10 minutes.
+    """
+    nlm_cli = args.cli_path
+    notebooks = get_notebooks(nlm_cli, args.keywords)
+    
+    if not notebooks:
+        logging.error(f"[FATAL] No notebooks matched: {', '.join(args.keywords)}")
+        sys.exit(1)
+    
+    # Use first matching notebook
+    nb_id, nb_name = notebooks[0]
+    logging.info(f"=== Generate Audio: {nb_name} ===")
+    
+    # Map format to official format name
+    format_map = {
+        "deep-dive": "deep-dive",
+        "brief": "brief",
+        "critique": "critique",
+        "debate": "debate",
+    }
+    fmt = format_map.get(args.format, "deep-dive")
+    
+    # Map user-facing language code to official NotebookLM code
+    lang_map = {
+        "zh": "zh_Hans",
+        "zh-cn": "zh_Hans",
+        "en": "en",
+    }
+    official_lang = lang_map.get(args.lang.lower(), args.lang)
+    
+    # Default description based on format
+    description = args.custom_prompt or f"Generate a {fmt} audio overview of this notebook"
+    
+    # Step 1: Start generation WITHOUT waiting (CLI's --wait has hardcoded 300s timeout)
+    cmd_start = [
+        nlm_cli, "generate", "audio",
+        "--notebook", nb_id,
+        "--format", fmt,
+        "--language", official_lang,
+        "--no-wait",  # Don't wait in CLI - we'll poll with our own timeout
+        "--json",
+        description,
+    ]
+    
+    logging.info(f"[START] {' '.join(cmd_start)}")
+    start_output = run_command(cmd_start, timeout=60)  # Short timeout - just starts generation
+    
+    if not start_output:
+        logging.error("[FATAL] Failed to start audio generation (empty response)")
+        sys.exit(1)
+    
+    # Parse task_id from response
+    try:
+        start_result = json.loads(start_output)
+        task_id = start_result.get("task_id")
+        if not task_id:
+            # Check if it's already complete (rare but possible for brief format)
+            if start_result.get("status") == "completed":
+                print(f"\n✅ Audio generation completed!")
+                print(f"Notebook: {nb_name} ({nb_id})")
+                print(f"Format: {args.format}")
+                print(f"Language: {args.lang}")
+                if start_result.get("url"):
+                    print(f"URL: {start_result.get('url')}")
+                print("\nUse `notebooklm artifact download <id>` to download the file.")
+                logging.info("=== Audio generation complete! ===")
+                return
+            logging.error(f"[FATAL] No task_id in response: {start_output}")
+            sys.exit(1)
+    except json.JSONDecodeError:
+        logging.error(f"[FATAL] Invalid JSON response: {start_output[:200]}")
+        sys.exit(1)
+    
+    logging.info(f"[INFO] Generation started. Task ID: {task_id}")
+    print(f"\n🎵 Audio generation started...")
+    print(f"   Notebook: {nb_name}")
+    print(f"   Format: {args.format}")
+    print(f"   Task ID: {task_id}")
+    print(f"   Waiting for completion (up to 9 minutes)...\n")
+    
+    # Step 2: Wait for completion using CLI's built-in wait with extended timeout
+    # Note: artifact wait uses exponential backoff (2s → 10s max)
+    wait_timeout = getattr(args, 'timeout', 540)  # 9 minutes default
+    cmd_wait = [
+        nlm_cli, "artifact", "wait",
+        task_id,
+        "--notebook", nb_id,
+        "--timeout", str(wait_timeout),
+        "--json",
+    ]
+    
+    logging.info(f"[WAIT] {' '.join(cmd_wait)}")
+    wait_output = run_command(cmd_wait, timeout=wait_timeout + 60)  # Outer timeout slightly longer
+    
+    if not wait_output:
+        logging.error("[FATAL] Audio generation timed out or failed")
+        logging.error(f"Task ID: {task_id}")
+        logging.error("Check the NotebookLM UI manually for status.")
+        sys.exit(1)
+    
+    try:
+        result = json.loads(wait_output)
+        status = result.get("status", "unknown")
+        
+        if status == "completed":
+            print(f"\n✅ Audio generation completed!")
+            print(f"Notebook: {nb_name} ({nb_id})")
+            print(f"Format: {args.format}")
+            print(f"Language: {args.lang}")
+            print(f"Artifact ID: {task_id}")
+            if result.get("url"):
+                print(f"URL: {result.get('url')}")
+            print("\nUse `notebooklm artifact download <id>` to download the file.")
+            logging.info("=== Audio generation complete! ===")
+        else:
+            logging.error(f"[FATAL] Generation ended with status: {status}")
+            if result.get("error"):
+                logging.error(f"Error: {result.get('error')}")
+            logging.error(f"Task ID: {task_id}")
+            sys.exit(1)
+    except json.JSONDecodeError:
+        logging.error(f"[FATAL] Invalid wait response: {wait_output[:200]}")
+        sys.exit(1)
+
+
+# ---------------------------------------------------------------------------
+# Subcommand: generate-slides
+# ---------------------------------------------------------------------------
+
+def cmd_generate_slides(args) -> None:
+    """Generate slide deck from NotebookLM notebook using official slide generation."""
+    nlm_cli = args.cli_path
+    notebooks = get_notebooks(nlm_cli, args.keywords)
+    
+    if not notebooks:
+        logging.error(f"[FATAL] No notebooks matched: {', '.join(args.keywords)}")
+        sys.exit(1)
+    
+    # Use first matching notebook
+    nb_id, nb_name = notebooks[0]
+    logging.info(f"=== Generate Slide Deck: {nb_name} ===")
+    
+    # Build the generate command
+    cmd = [
+        nlm_cli, "generate", "slide-deck",
+        "--notebook", nb_id,
+        "--format", args.format,
+        "--length", args.length,
+        "--wait",  # Wait for completion by default
+        "--json",  # Get structured output
+    ]
+    
+    if args.language:
+        cmd.extend(["--language", args.language])
+    
+    # Add custom prompt if provided
+    if args.custom_prompt:
+        cmd.append(args.custom_prompt)
+    
+    logging.info(f"[RUN] {' '.join(cmd)}")
+    output = run_command(cmd, timeout=300)  # Longer timeout for slide generation
+    
+    if not output:
+        logging.error("[FATAL] Slide deck generation failed (empty response).")
+        sys.exit(1)
+    
+    try:
+        result = json.loads(output)
+    except json.JSONDecodeError:
+        logging.error(f"[FATAL] Failed to parse slide deck response: {output[:200]}")
+        sys.exit(1)
+    
+    slides_content = result.get("content", "")
+    if not slides_content:
+        logging.error("[FATAL] No slide content returned.")
+        sys.exit(1)
+    
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    source_label = f"NotebookLM/{nb_name}"
+    
+    # Build output
+    fm = build_frontmatter(
+        title=f"{nb_name} | Slide Deck",
+        date_str=date_str,
+        source=source_label,
+        topic=args.topic if args.topic else nb_name,
+        mode="slides",
+        extra_tags=["slide-deck", "presentation"]
+    )
+    
+    header = f"# {nb_name} — Slide Deck\n"
+    full_content = '\n'.join([
+        fm,
+        "",
+        header,
+        "",
+        slides_content,
+        "",
+        f"*Generated by NotebookLM official slide generator on {date_str}*"
+    ])
+    
+    # Write output if output path is provided
+    if args.output:
+        out_path = os.path.expanduser(args.output)
+        write_note(out_path, full_content)
+        logging.info(f"Slide deck saved → {out_path}")
+    else:
+        # Print to stdout
+        print(full_content)
+    
+    # Write back to notebook if requested
+    if args.writeback:
+        note_title = f"Slide Deck | {nb_name} | {date_str}"
+        writeback_to_notebook(nlm_cli, nb_id, full_content, note_title)
+    
+    logging.info("=== Slide generation complete! ===")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -812,6 +1039,44 @@ Examples:
     p_persist.add_argument("--tags", default="",
                            help="Comma-separated tags (e.g. 'research,ai,notes')")
 
+    # --- generate-audio ---
+    p_audio = sub.add_parser("generate-audio", help="Generate an official NotebookLM Audio Overview.")
+    p_audio.add_argument("--keywords", nargs="+", required=True,
+                          help="Keywords to match against notebook titles")
+    p_audio.add_argument("--format", choices=["deep-dive", "brief", "critique", "debate"], default="deep-dive",
+                          help="Audio format: deep-dive (default), brief, critique, or debate")
+    p_audio.add_argument("--lang", default="en", choices=["en", "zh"],
+                          help="Output language: 'en' (default) or 'zh' for Chinese")
+    p_audio.add_argument("--length", default="default", choices=["default", "short"],
+                          help="Audio length: default | short")
+    p_audio.add_argument("--custom-prompt", default="",
+                          help="Additional guidance/constraints for the audio")
+    p_audio.add_argument("--timeout", type=int, default=540,
+                          help="Maximum seconds to wait for audio generation (default: 540 = 9 min)")
+    p_audio.add_argument("--cli-path", default=find_notebooklm_cli(),
+                          help="Path to the notebooklm CLI (default: auto-detected)")
+
+    # --- generate-slides ---
+    p_slides = sub.add_parser("generate-slides", help="Generate official slide deck from NotebookLM.")
+    p_slides.add_argument("--keywords", nargs="+", required=True,
+                          help="Keywords to match against notebook titles (e.g. 'machine learning' 'AI')")
+    p_slides.add_argument("--topic", default="",
+                          help="Topic name for frontmatter (defaults to notebook name)")
+    p_slides.add_argument("--format", choices=["detailed", "presenter"], default="detailed",
+                          help="Slide format: 'detailed' (default) with full content, 'presenter' with speaker notes")
+    p_slides.add_argument("--language", default="",
+                          help="Output language (e.g. 'zh' for Chinese, defaults to NotebookLM config)")
+    p_slides.add_argument("--length", choices=["default", "short"], default="default",
+                          help="Slide deck length: 'default' (full) or 'short' (concise)")
+    p_slides.add_argument("--custom-prompt", default="",
+                          help="Custom prompt to guide slide generation (e.g. 'focus on technical implementation')")
+    p_slides.add_argument("--output", default="",
+                          help="Output file path (if not provided, prints to stdout)")
+    p_slides.add_argument("--cli-path", default=find_notebooklm_cli(),
+                          help="Path to the notebooklm CLI (default: auto-detected)")
+    p_slides.add_argument("--writeback", action="store_true", default=False,
+                          help="Write generated slides back into the NotebookLM notebook as a note")
+
     args = parser.parse_args()
 
     dispatch = {
@@ -820,6 +1085,8 @@ Examples:
         "persist": cmd_persist,
         "quiz": cmd_quiz,
         "evaluate": cmd_evaluate,
+        "generate-audio": cmd_generate_audio,
+        "generate-slides": cmd_generate_slides,
     }
     dispatch[args.command](args)
 

@@ -1,8 +1,8 @@
 # NotebookLM Distiller
 
-An [OpenClaw](https://github.com/openclaw) skill that extracts knowledge from Google NotebookLM notebooks and writes structured Markdown notes to your Obsidian vault.
+An [OpenClaw](https://github.com/openclaw) skill that extracts knowledge from Google NotebookLM notebooks and writes structured Markdown notes to your Obsidian vault — with optional voice narration.
 
-> **Version 2.1** — New: output templates (`--template`) for structured extraction (briefs, slides, reports, podcasts, action plans, learning notes). Templates are externalized in `templates.json` for easy customization.
+> **Version 3.0** — New: `generate-audio` subcommand for official NotebookLM Audio Overview (Deep Dive / Brief / Critique / Debate); `--voice` flag on `distill` for edge-tts narration of deep reports; type-safety fixes; `audio-popular`/`audio-pro` templates moved to internal-only.
 
 ---
 
@@ -10,14 +10,26 @@ An [OpenClaw](https://github.com/openclaw) skill that extracts knowledge from Go
 
 - **`distill`** — Extract knowledge from existing NotebookLM notebooks into Obsidian
   - **Legacy modes:** `qa` (15-20 deep Q&A pairs), `summary` (5-section expert knowledge map), `glossary` (15-30 domain terms)
-  - **Output templates** (NEW): `brief`, `notes`, `report`, `slides`, `plan`, `audio-popular`, `audio-pro` — structured extraction with multi-section prompts for complex formats
-  - **Auto-routing** (NEW): `--auto-route` infers the best template from the notebook name
+  - **Output templates:** `brief`, `notes`, `report`, `slides`, `plan` — structured multi-section extraction
+  - **`--voice`** *(NEW)*: convert the distilled report to speech via edge-tts (MP3 saved alongside the markdown)
+  - **`--auto-route`**: infer the best template from the notebook name automatically
   - Keyword-based notebook matching (case-insensitive substring)
   - Auto-generated YAML frontmatter compatible with Obsidian
+
+- **`generate-audio`** *(NEW)* — Trigger official NotebookLM Audio Overview
+  - Formats: `deep-dive`, `brief`, `critique`, `debate`
+  - Configurable language (`zh` default), length (`short` / `medium` / `long`), and `--custom-prompt`
+  - Backed by NotebookLM's native audio engine — no TTS synthesis
+
+- **`generate-slides`** *(NEW)* — Trigger official NotebookLM Slide Deck generation
+  - Formats: `detailed` (default) \| `presenter`
+  - Configurable language (`zh_Hans` default), length (`default` \| `short`), and `--custom-prompt`
+  - Backed by NotebookLM's native presentation engine
+
 - **`quiz`** — Generate quiz questions as JSON for agent-orchestrated interactive sessions (e.g. Discord)
 - **`evaluate`** — Evaluate a user's answer against notebook sources; returns structured feedback as JSON
-- **`research`** — Start a NotebookLM web research session on any topic, wait for completion, output the notebook ID for follow-up distillation
-- **`persist`** — Write any Markdown content directly into your Obsidian vault with frontmatter
+- **`research`** — Start a NotebookLM web research session on any topic, wait for completion, output notebook ID for follow-up
+- **`persist`** — Write any Markdown content directly into Obsidian with auto-generated frontmatter
 
 No web-scraping dependencies required — pairs with [DeepReader](https://github.com/astonysh/OpenClaw-DeepReeder) for full URL-to-Obsidian automation.
 
@@ -41,7 +53,12 @@ notebooklm login
 # Opens a browser — log in with your Google account linked to NotebookLM
 ```
 
-**Requirements:** Python 3.10+, no extra pip packages beyond `notebooklm-py`.
+**4. (Optional) Install edge-tts for `--voice` narration:**
+```bash
+pip3 install edge-tts
+```
+
+**Requirements:** Python 3.9+, `notebooklm-py`. `edge-tts` only needed for `--voice`.
 
 ---
 
@@ -70,6 +87,7 @@ python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py distill \
 | `--template` | | Use a named output template (see **Output Templates** below) |
 | `--auto-route` | | Infer the best template automatically from notebook name keywords. Falls back to `--mode` if no match. |
 | `--lang` | | Output language: `en` (default) or `zh` (Chinese) |
+| `--voice` | | **(NEW)** Convert distilled report to speech via edge-tts. Provide a voice name (e.g. `zh-CN-YunxiNeural`). Saves `.mp3` alongside the `.md` file. |
 | `--writeback` | | Also write distilled content back into the NotebookLM notebook as a source note |
 | `--cli-path` | | Path to `notebooklm` binary if not in `$PATH` |
 
@@ -79,7 +97,7 @@ python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py distill \
 
 ### Output Templates
 
-Templates define **what you extract** from a notebook and **how it's structured**. Each template sends one or more prompts to NotebookLM and assembles the responses into a single Obsidian note.
+Templates define **what you extract** and **how it's structured**. Each template sends one or more prompts to NotebookLM and assembles the responses into a single Obsidian note.
 
 | Name | Output file | Sections | Best for |
 |------|-------------|----------|---------|
@@ -88,88 +106,103 @@ Templates define **what you extract** from a notebook and **how it's structured*
 | `report` | `_DeepDiveReport.md` | 4 | Papers, research, in-depth analysis |
 | `slides` | `_Slides.md` | 3 | Presentation outlines, talk preparation |
 | `plan` | `_ActionPlan.md` | 1 | Project plans, requirements, roadmaps |
-| `audio-popular` | `_AudioPodcast_Popular.md` | 1 | Podcast scripts for general audience |
-| `audio-pro` | `_AudioPodcast_Pro.md` | 1 | Podcast scripts for industry practitioners |
 
-> Templates with multiple sections make separate NLM calls per section, producing richer output for complex formats.
+> `audio-popular` and `audio-pro` are retained in `templates.json` as **internal dialogue-script templates** — they are not exposed as user-facing commands. Use `generate-audio` for actual audio output.
 
-#### Usage examples
+#### Example: deep dive report with voice narration
 
-**Generate an executive brief:**
 ```bash
 python3 distill.py distill \
-  --keywords "Q4 Revenue" \
-  --topic "Finance" \
-  --vault-dir ~/Obsidian/Vault \
-  --template brief \
-  --lang zh
-```
-→ Output: `Finance/Q4_Revenue_Report_ExecutiveBrief.md` — a 300-word structured memo with findings, metrics, and action items.
-
-**Generate a podcast script:**
-```bash
-python3 distill.py distill \
-  --keywords "AI Trends" \
-  --topic "Podcasts" \
-  --vault-dir ~/Obsidian/Vault \
-  --template audio-popular
-```
-→ Output: `Podcasts/AI_Trends_AudioPodcast_Popular.md` — a two-host dialogue script with opening hook, core content, and closing.
-
-**Generate a deep dive report (multi-section):**
-```bash
-python3 distill.py distill \
-  --keywords "transformer" \
-  --topic "Research" \
+  --keywords "LLVM RVV" \
+  --topic "ChipDesign" \
   --vault-dir ~/Obsidian/Vault \
   --template report \
-  --lang zh
+  --lang zh \
+  --voice zh-CN-YunxiNeural
 ```
-→ Output: `Research/Transformer_DeepDiveReport.md` — 4 sections (Executive Summary & Background → Core Analysis → Comparative Analysis & Insights → Recommendations & Limitations), each from a separate NLM call.
 
-**Use auto-routing (let the notebook name decide):**
+→ Writes `ChipDesign/LLVM_RVV_DeepDiveReport.md` (4-section Chinese report) **and** `LLVM_RVV_DeepDiveReport.mp3` narrated by Yunxi.
+
+**Common edge-tts voices:**
+
+| Voice | Language | Style |
+|-------|----------|-------|
+| `zh-CN-YunxiNeural` | Chinese (Mandarin) | Male, clear |
+| `zh-CN-XiaoxiaoNeural` | Chinese (Mandarin) | Female, warm |
+| `en-US-EmmaMultilingualNeural` | English | Female, multilingual |
+| `en-GB-RyanNeural` | English (UK) | Male |
+
+List all available voices: `edge-tts --list-voices`
+
+---
+
+### Subcommand: `generate-audio` *(NEW)*
+
+Trigger official NotebookLM Audio Overview generation with full control over format, language, length, and custom guidance.
+
 ```bash
-python3 distill.py distill \
-  --keywords "Q3 earnings" \
-  --topic "Finance" \
-  --vault-dir ~/Obsidian/Vault \
-  --auto-route
-```
-→ Notebook name contains "earnings" → auto-routes to `brief` template. If no keyword matches, falls back to `--mode` (default: `qa`).
-
-#### Changing the target audience or tone
-
-Templates are defined in [`scripts/templates.json`](scripts/templates.json). To change the target audience, tone, or structure of any template, edit the JSON file directly:
-
-```jsonc
-// Example: change the brief template to target investors instead of executives
-{
-  "brief": {
-    "file_suffix": "_InvestorBrief.md",
-    "title": "Investor Brief",
-    "sections": [
-      {
-        "heading": "Investor Brief",
-        "prompt": "Based on the sources in this notebook, write a one-page brief for angel investors. Focus on market opportunity, traction metrics, competitive moat, and investment thesis. Keep it under 400 words."
-      }
-    ]
-  }
-}
+python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py generate-audio \
+  --keywords "LLVM RVV" \
+  --format debate \
+  --lang zh \
+  --length long \
+  --custom-prompt "重点讨论 vsetvli 插入策略对 Simulator 建模的影响"
 ```
 
-You can also **add entirely new templates** — just add a new key to `templates.json` and it will automatically appear in `--template` choices and `--auto-route` matching.
+**Arguments:**
+
+| Argument | Required | Description |
+|---|---|---|
+| `--keywords` | ✅ | Keywords to match against notebook titles |
+| `--format` | | `deep-dive` (default) \| `brief` \| `critique` \| `debate` |
+| `--lang` | | Audio language: `zh` (default, Chinese) \| `en` |
+| `--length` | | `short` (~5 min) \| `medium` (~15 min, default) \| `long` (~30 min) |
+| `--custom-prompt` | | Additional guidance injected into the audio prompt |
+| `--cli-path` | | Path to `notebooklm` binary |
+
+**Audio formats:**
+
+| Format | Official Description | Natural Language Triggers | Best for |
+|--------|----------------------|---------------------------|---------|
+| `deep-dive` | A lively and engaging conversation between two hosts who interpret and connect themes in your sources. | `Deep analysis`, `Deep dive`, `Dialogue`, `Popular science` | General learning, concept exploration |
+| `brief` | A brief summary designed to help you quickly understand the core ideas of your sources. | `Briefing`, `Summary`, `Quick overview`, `5-minute version` | Quick overviews, busy schedules |
+| `critique` | An expert evaluation of your sources, designed to provide constructive feedback to help you improve your content. | `Expert review`, `Find flaws`, `Critical advice`, `Improvement feedback` | Reviewing papers, design docs, proposals |
+| `debate` | A thoughtful debate between two hosts, designed to clarify different perspectives on your sources. | `Debate`, `Multi-perspective`, `Pros and cons`, `Brainstorming` | Controversial topics, decision tradeoffs |
+
+#### Discord natural language → `generate-audio` mapping
+
+| User says | Command generated |
+|-----------|------------------|
+| "Deep analysis" / "Popular science" / "Dialogue" | `--format deep-dive` |
+| "Critique" / "Find flaws" / "Expert review" | `--format critique` |
+| "Debate" / "Pros and cons" / "Brainstorming" | `--format debate` |
+| "Briefing" / "Summary" / "5-minute version" | `--format brief` |
+| + "English version" | `+ --lang en` |
+| + "Longer" / "30 minutes" | `+ --length long` |
+| + "Focus on X" | `+ --custom-prompt "Focus on X"` |
+
+---
+
+### Two audio workflows compared
+
+| | `distill --voice` | `generate-audio` |
+|---|---|---|
+| **Content source** | distill.py generates report → strip markdown → TTS | NotebookLM's native audio engine |
+| **Content control** | Very high — exact report content, word for word | Medium — format + custom prompt guides it |
+| **Voice quality** | edge-tts (Microsoft Neural TTS, excellent) | NotebookLM native (Google, natural conversation) |
+| **Output style** | Single narrator, structured prose | Two-host dialogue (Deep Dive) or debate |
+| **Best for** | "I want every word to be actionable information" | "I want a natural listening experience" |
 
 ---
 
 ### Subcommand: `quiz` + `evaluate` (Discord interactive quiz)
 
-These two subcommands are designed to be orchestrated by an agent (e.g. OpenClaw) to run an interactive quiz inside Discord or any chat interface.
-
 **Step 1 — Generate questions:**
 ```bash
 python3 distill.py quiz \
   --keywords "machine learning" \
-  --count 10
+  --count 10 \
+  --lang zh
 ```
 
 Output (JSON):
@@ -177,10 +210,7 @@ Output (JSON):
 {
   "notebook_id": "abc123",
   "notebook_name": "ML Research Notes",
-  "questions": [
-    "Why does dropout work differently at inference time than training time?",
-    "..."
-  ],
+  "questions": ["Why does dropout work differently at inference time?", "..."],
   "total": 10
 }
 ```
@@ -190,84 +220,44 @@ Output (JSON):
 python3 distill.py evaluate \
   --notebook-id "abc123" \
   --question "Why does dropout work differently at inference time?" \
-  --answer "Because we don't want randomness when predicting"
+  --answer "Because we don't want randomness when predicting" \
+  --lang zh
 ```
 
-Output (JSON):
-```json
-{
-  "question": "Why does dropout work differently...",
-  "user_answer": "Because we don't want randomness when predicting",
-  "feedback": "What you got right: ... What you're missing: ... Complete answer: ..."
-}
-```
-
-**Agent orchestration flow (Discord example):**
+**Agent orchestration flow (Discord):**
 ```
 Agent calls quiz → gets questions list
-  → posts Q1 to Discord
-  → waits for user reply
-  → calls evaluate with user's reply
-  → posts NLM feedback to Discord
-  → posts Q2 → repeat
+  → announces: "来，N 道题（来源：{notebook_name} · ID: {notebook_id[:8]}）"
+  → posts Q1 to Discord → waits for user reply
+  → calls evaluate → posts feedback
+  → posts Q2 → repeat until done
 ```
 
 ---
 
 ### Subcommand: `research`
 
-Create a new NotebookLM notebook from web research on any topic and wait for it to finish.
+Create a new NotebookLM notebook from web research and wait for completion.
 
 ```bash
-python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py research \
-  --topic "Quantum Computing" \
-  --mode deep
+python3 distill.py research --topic "Quantum Computing" --mode deep
 ```
 
-**Arguments:**
-
-| Argument | Required | Description |
-|---|---|---|
-| `--topic` | ✅ | Research topic (used as notebook name) |
-| `--mode` | | `deep` (default) or `fast` |
-| `--cli-path` | | Path to `notebooklm` binary |
-
-Output: prints the notebook ID and name. Use `distill` to extract results into Obsidian.
-
-**Full research-to-Obsidian workflow:**
-```bash
-# Step 1: research
-python3 distill.py research --topic "Quantum Computing"
-# → Notebook: Research: Quantum Computing (ID: abc123)
-
-# Step 2: distill with a template
-python3 distill.py distill \
-  --keywords "Quantum Computing" \
-  --topic "QuantumComputing" \
-  --vault-dir ~/Obsidian/Vault \
-  --template report --lang zh
-```
+Output: prints notebook ID and name. Follow up with `distill` to extract into Obsidian.
 
 ---
 
 ### Subcommand: `persist`
 
-Write any Markdown content into your Obsidian vault with auto-generated YAML frontmatter.
+Write any Markdown content into Obsidian with auto-generated YAML frontmatter.
 
 ```bash
-# From inline content
-python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py persist \
+python3 distill.py persist \
   --vault-dir "/path/to/Obsidian/Vault" \
-  --path "Notes/2026-03-09-meeting.md" \
+  --path "Notes/2026-03-14-meeting.md" \
   --title "Team Meeting Notes" \
   --content "Key decisions: ..." \
-  --tags "meeting,notes,2026"
-
-# From an existing file
-python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py persist \
-  --vault-dir "/path/to/Obsidian/Vault" \
-  --path "Research/draft.md" \
-  --file ~/Desktop/draft.md
+  --tags "meeting,notes"
 ```
 
 ---
@@ -276,184 +266,58 @@ python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py persist \
 
 This skill handles **distillation only**. For the full **URL → NotebookLM → Obsidian** pipeline, pair it with [DeepReader](https://github.com/astonysh/OpenClaw-DeepReeder).
 
-### Combined workflow (inside OpenClaw agent)
-
 ```
 User: "Read https://example.com/paper and distill it into my Obsidian"
   │
-  ├─ DeepReader
-  │    ├─ Fetches and parses the URL
-  │    ├─ Saves clean .md to memory/inbox/
-  │    └─ Uploads to NotebookLM (smart routing: add to existing or create new)
-  │         └─ Returns: notebook_title, action
+  ├─ DeepReader: fetch → parse → upload to NotebookLM → returns notebook_title
   │
-  └─ NotebookLM Distiller
-       ├─ Matches notebook by title keyword
-       └─ Runs distill (--template or --mode) → writes .md to Obsidian vault
-```
-
-### Natural language triggers (inside OpenClaw)
-
-```
-# Distill an existing notebook
-"提取 'ML Research' 笔记本的摘要，存到 Obsidian"
-"distill the Quantum Computing notebook using glossary mode"
-
-# Distill with a template
-"用 brief 模板蒸馏财报笔记本"
-"generate a deep dive report from the AI Research notebook"
-
-# Research a topic then distill
-"研究一下 transformer architecture，蒸馏后存入知识库"
-
-# Persist discussion conclusions
-"把这段对话的结论存到 Obsidian"
-```
-
----
-
-## Discord Command Examples
-
-When using this skill inside an OpenClaw agent on Discord, users can issue natural language commands. The agent translates them into `distill.py` calls.
-
-### Template shortcuts
-
-| User says in Discord | Agent calls |
-|----------------------|------------|
-| `[URL or keywords] --audio` | `--template audio-popular` (general audience) |
-| `[URL or keywords] --audio --pro` | `--template audio-pro` (practitioners) |
-| `[URL or keywords] --brief` | `--template brief` |
-| `[URL or keywords] --slides` | `--template slides` |
-| `[URL or keywords] --notes` | `--template notes` |
-| `[URL or keywords] --plan` | `--template plan` |
-| `[URL or keywords] --report` | `--template report` |
-
-### Audience and tone overrides
-
-| User says | Agent interpretation |
-|-----------|---------------------|
-| `--audience exec` or `给CEO/高管看` | Uses `brief` template |
-| `--audience tech` or `给工程师看` | Uses `report` or `notes` template |
-| `--tone casual` or `科普向` | Uses `audio-popular` (dialogue, general audience) |
-| `--tone pro` or `专业向` | Uses `audio-pro` (practitioner depth) |
-| `--lang zh` or `用中文` | Adds `--lang zh` to the command |
-
-### Example Discord interactions
-
-```
-# Auto-routing (agent infers template from notebook name)
-用户: 蒸馏一下 "Q4 财报" 这个笔记本
-Agent: distill --keywords "Q4 财报" --auto-route ...
-→ Matches "earnings/财报" keyword → routes to brief template
-
-# Explicit template
-用户: 把 AI Trends 笔记本做成播客脚本
-Agent: distill --keywords "AI Trends" --template audio-popular ...
-
-# Professional audience
-用户: 生成 transformer 的专业播客，给工程师听
-Agent: distill --keywords "transformer" --template audio-pro ...
-
-# Slides for a talk
-用户: 把这个笔记本做成演讲幻灯片，用中文
-Agent: distill --keywords "..." --template slides --lang zh ...
-
-# Research then distill
-用户: 调研一下量子计算，然后出一份深度报告
-Agent (step 1): research --topic "量子计算"
-Agent (step 2): distill --keywords "量子计算" --template report --lang zh ...
-```
-
-### Quiz session (Discord interactive)
-
-```
-用户: 考考我 ML Research 笔记本的内容，出 5 题
-Agent → quiz --keywords "ML Research" --count 5 --lang zh
-  → JSON: { "notebook_id": "...", "questions": [...], "total": 5 }
-  → Agent announces: "来，5 道题（来源：ML Research · ID: abc12345）"
-  → Posts Q1, waits for user reply
-  → evaluate --notebook-id "..." --question "..." --answer "<reply>" --lang zh
-  → Posts feedback, moves to Q2
-  → Repeats until done
-```
-
-> **Note:** The agent always announces the notebook source (`notebook_name` + first 8 chars of `notebook_id`) before the first question so users can verify questions came from NotebookLM, not the agent's own knowledge.
-
----
-
-## Obsidian Setup
-
-No special template or plugin configuration required. Just point `--vault-dir` to your vault's root or any subfolder. The script creates subdirectories automatically and injects YAML frontmatter that Obsidian reads natively.
-
-**Recommended vault structure:**
-```
-YourVault/
-└── Knowledge/
-    └── MachineLearning/         ← --topic "MachineLearning"
-        ├── MyNotebook_QA.md
-        ├── MyNotebook_Summary.md
-        ├── MyNotebook_ExecutiveBrief.md    ← --template brief
-        ├── MyNotebook_DeepDiveReport.md    ← --template report
-        └── MyNotebook_Slides.md            ← --template slides
+  └─ NotebookLM Distiller: match by title → distill → write .md → (optional) .mp3
 ```
 
 ---
 
 ## Customizing Templates
 
-All templates live in [`scripts/templates.json`](scripts/templates.json). You can edit, add, or remove templates without touching any Python code.
-
-Each template entry has:
+All templates live in [`scripts/templates.json`](scripts/templates.json). Edit, add, or remove templates without touching Python.
 
 ```jsonc
 {
   "template-name": {
-    "file_suffix": "_OutputFile.md",         // filename suffix for Obsidian
-    "title": "Human-Readable Title",         // shown in note heading
-    "auto_route_keywords": ["keyword1", "keyword2"],  // for --auto-route matching
-    "sections": [                            // one or more prompt sections
+    "file_suffix": "_OutputFile.md",
+    "title": "Human-Readable Title",
+    "auto_route_keywords": ["keyword1", "keyword2"],
+    "sections": [
       {
-        "heading": "Section Heading",        // markdown ## heading in output
-        "prompt": "Prompt text sent to NLM"  // the actual NLM query
+        "heading": "Section Heading",
+        "prompt": "Prompt text sent to NLM"
       }
     ]
   }
 }
 ```
 
-**Tips:**
-- Single-section templates (e.g. `brief`) send one prompt and produce a concise output
-- Multi-section templates (e.g. `report` with 4 sections) make separate NLM calls per section for richer, non-truncated output
-- After editing `templates.json`, run `distill.py distill --help` to verify your new template appears in `--template` choices
+After editing, run `distill.py distill --help` to verify your template appears in `--template` choices.
 
 ---
 
-## Notes on output language
+## Language output
 
-By default, `distill`, `quiz`, and `evaluate` reply in English. Add `--lang zh` to get Chinese output:
+- `distill`, `quiz`, `evaluate`: default `en`; add `--lang zh` for Chinese
+- `generate-audio`: default `zh`; add `--lang en` for English audio
 
-```bash
-python3 distill.py distill --keywords "Machine Learning" --topic "AI" \
-  --vault-dir ~/Obsidian/Vault --template notes --lang zh
-```
-
-## Notes on NLM conversation history
-
-The `notebooklm ask --new` command used internally creates **ephemeral CLI sessions** that are not visible in the NotebookLM web interface. This is expected behaviour — the CLI and web UI maintain separate conversation spaces.
-
-**What this means:** You will not see distill, quiz, or evaluate queries appear in your NotebookLM notebook history. The answers are still generated from your notebook's sources, but the conversation is not persisted.
-
-**To verify source authenticity:** After distilling, search a key phrase from the output in your original NotebookLM sources. The CLI always scopes queries to the specified `--notebook` ID and does not use outside knowledge.
+---
 
 ## Troubleshooting
 
 | Error | Fix |
 |---|---|
-| `notebooklm: command not found` | Use `--cli-path $(which notebooklm)` or install with `pip3 install notebooklm-py` |
-| `No notebooks matched` | Run `notebooklm list` to check exact notebook titles, adjust `--keywords` |
-| Auth failure / session expired | Run `notebooklm login` to refresh `~/.book_client_session` |
-| Rate limit / timeout on distill | Built-in retry logic handles most cases; for large notebooks try `--template brief` or `--mode summary` first |
-| Template not found | Verify `scripts/templates.json` exists and is valid JSON; run `distill.py distill --help` to check |
+| `notebooklm: command not found` | `pip3 install notebooklm-py` or use `--cli-path` |
+| `No notebooks matched` | Run `notebooklm list` to verify exact titles, adjust `--keywords` |
+| Auth failure / session expired | `notebooklm login` to refresh `~/.book_client_session` |
+| `edge-tts not found` | `pip3 install edge-tts` (only needed for `--voice`) |
+| `notebooklm audio` not supported | Update notebooklm-py: `pip3 install -U notebooklm-py` |
+| Rate limit / timeout | Built-in retry handles most cases; try `--template brief` or `--mode summary` first |
+| Template not found | Verify `scripts/templates.json` exists and is valid JSON |
 
 ---
 
