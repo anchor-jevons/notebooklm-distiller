@@ -94,8 +94,8 @@ Trigger `quiz` + `evaluate` subcommands when:
 
 ## Artifact Delivery Workflow (2026-03-15)
 - **Artifact Sync**: For any generated Audio or Slide Deck, the agent **MUST** perform a post-download copy to the Buddy Workspace:
-  - **Audio**: `/Users/jevons/.openclaw/workspace-buddy/inbox/notebooklm-audio/` (must be M4A container)
-  - **Slides**: `/Users/jevons/.openclaw/workspace-buddy/inbox/notebooklm-slides/`
+  - **Audio**: `/YOUR_ABSOLUTE_PATH/.openclaw/workspace-buddy/inbox/notebooklm-audio/` (must be M4A container)
+  - **Slides**: `/YOUR_ABSOLUTE_PATH/.openclaw/workspace-buddy/inbox/notebooklm-slides/`
 - **Path Reporting**: Always provide the full absolute path in the final message to the user.
 
 Trigger `persist` subcommand when:
@@ -106,9 +106,9 @@ Trigger `persist` subcommand when:
 
 ## Prerequisites
 
-- **NotebookLM CLI**: installed in deepreader venv — `/Users/jevons/.openclaw/skills/deepreader/.venv/bin/notebooklm`
+- **NotebookLM CLI**: installed in deepreader venv — `/YOUR_ABSOLUTE_PATH/.openclaw/skills/deepreader/.venv/bin/notebooklm`
 - **Authentication**: `notebooklm login` (creates `~/.book_client_session`)
-- **Python interpreter**: ALWAYS use `/Users/jevons/.openclaw/skills/deepreader/.venv/bin/python3` (Python 3.11, notebooklm-py 0.3.4). Do NOT use system `python3` (3.9, outdated notebooklm-py 0.1.1) or any other interpreter.
+- **Python interpreter**: ALWAYS use `/YOUR_ABSOLUTE_PATH/.openclaw/skills/deepreader/.venv/bin/python3` (Python 3.11, notebooklm-py 0.3.4). Do NOT use system `python3` (3.9, outdated notebooklm-py 0.1.1) or any other interpreter.
 - **Obsidian vault directory** accessible on the local filesystem
 
 ## Subcommand: distill
@@ -130,7 +130,7 @@ Extract knowledge from one or more NotebookLM notebooks matching keywords.
 4. Execute distill.
 
 ```bash
-/Users/jevons/.openclaw/skills/deepreader/.venv/bin/python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py distill \
+/YOUR_ABSOLUTE_PATH/.openclaw/skills/deepreader/.venv/bin/python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py distill \
   --keywords "<keyword1>" "<keyword2>" \
   --topic "<TopicFolderName>" \
   --vault-dir "<path/to/obsidian/vault>" \
@@ -170,7 +170,7 @@ Extract knowledge from one or more NotebookLM notebooks matching keywords.
 Start a NotebookLM web research session on a topic. Creates a new notebook, imports web sources, and waits for completion.
 
 ```bash
-/Users/jevons/.openclaw/skills/deepreader/.venv/bin/python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py research \
+/YOUR_ABSOLUTE_PATH/.openclaw/skills/deepreader/.venv/bin/python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py research \
   --topic "<Research Topic>" \
   [--mode deep|fast] \
   [--cli-path <path/to/notebooklm>]
@@ -184,7 +184,7 @@ Write any markdown content into the Obsidian vault with auto-generated YAML fron
 
 ```bash
 # From inline content
-/Users/jevons/.openclaw/skills/deepreader/.venv/bin/python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py persist \
+/YOUR_ABSOLUTE_PATH/.openclaw/skills/deepreader/.venv/bin/python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py persist \
   --vault-dir "<path/to/obsidian/vault>" \
   --path "Notes/2026-03-09-meeting.md" \
   --title "Meeting Notes" \
@@ -192,7 +192,7 @@ Write any markdown content into the Obsidian vault with auto-generated YAML fron
   --tags "meeting,notes"
 
 # From a file
-/Users/jevons/.openclaw/skills/deepreader/.venv/bin/python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py persist \
+/YOUR_ABSOLUTE_PATH/.openclaw/skills/deepreader/.venv/bin/python3 ~/.openclaw/skills/notebooklm-distiller/scripts/distill.py persist \
   --vault-dir "<path/to/obsidian/vault>" \
   --path "Notes/draft.md" \
   --file ~/Desktop/draft.md

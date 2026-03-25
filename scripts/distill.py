@@ -207,7 +207,7 @@ def extract_questions(nlm_cli: str, notebook_id: str, lang: str = "en") -> List[
         "Include questions about edge cases, apparent contradictions, and non-obvious consequences. "
         "Output one question per line as a flat list. No numbering, no prefixes, no markdown formatting."
     )
-    output = run_command([nlm_cli, "ask", prompt, "--notebook", notebook_id, "--new"])
+    output = run_command([nlm_cli, "ask", prompt, "--notebook", notebook_id])
     if not output:
         return []
     return parse_questions(output)
@@ -217,7 +217,7 @@ def ask_question(nlm_cli: str, question: str, notebook_id: str, retries: int = 3
                  lang: str = "en") -> str:
     """Ask a specific question and return the answer (with retry)."""
     full_question = lang_prefix(lang) + question
-    cmd = [nlm_cli, "ask", full_question, "--notebook", notebook_id, "--new"]
+    cmd = [nlm_cli, "ask", full_question, "--notebook", notebook_id]
     for attempt in range(retries):
         output = run_command(cmd)
         if output:
